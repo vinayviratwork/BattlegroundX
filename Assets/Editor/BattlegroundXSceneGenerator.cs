@@ -1,0 +1,1127 @@
+using System.IO;
+using TMPro;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using Unity.Netcode;
+using Unity.Netcode.Components;
+using Unity.Netcode.Transports.UTP;
+using UnityEngine.UI;
+
+/// <summary>
+/// One-click scene generator: Tools → Battleground X → Generate Full Scene
+/// Creates a playable greybox battle-royale map with terrain, buildings, roads,
+/// trees, 10 spawn points, 30 loot zones, all network prefabs wired, and full UI.
+/// </summary>
+public static class BattlegroundXSceneGenerator
+{
+    private const string PrefabFolder = "Assets/Prefabs";
+    private const string SceneFolder  = "Assets/Scenes";
+    private const string MatFolder    = "Assets/Materials";
+    private const string AnimFolder   = "Assets/Animations";
+
+    // ─────────────────────────────────────────────────────────────────────
+    [MenuItem("Tools/Battleground X/Generate Full Scene")]
+    public static void Generate()
+    {
+        EnsureFolders();
+
+        // ── Prefabs ───────────────────────────────────────────────────────
+        var playerPrefab     = CreatePlayerPrefab();
+        var medkitPrefab     = CreateLootPrefab("Loot_Medkit",     LootType.Medkit,      40, Color.red);
+        var rifleAmmoPrefab  = CreateLootPrefab("Loot_RifleAmmo",  LootType.AmmoRifle,   30, new Color(1f, 0.65f, 0f));
+        var shotgunAmmoPrefab= CreateLootPrefab("Loot_ShotgunAmmo",LootType.AmmoShotgun, 16, new Color(0.8f, 0.4f, 0f));
+        var sniperAmmoPrefab = CreateLootPrefab("Loot_SniperAmmo", LootType.AmmoSniper,   5, new Color(0.3f, 0.3f, 1f));
+
+        // ── New scene ─────────────────────────────────────────────────────
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+
+        // ── Terrain / ground ──────────────────────────────────────────────
+        BuildTerrain();
+
+        // ── Map features ──────────────────────────────────────────────────
+        BuildRoads();
+        BuildBuildings();
+        BuildTrees();
+        BuildCoverObjects();
+        BuildBridges();
+
+        // ── Network infrastructure ────────────────────────────────────────
+        var nm = BuildNetworkManager(playerPrefab);
+        BuildMatchObjects();
+        var spawnParent = BuildSpawnPoints();
+        var lootParent  = BuildLootSpawner(medkitPrefab, rifleAmmoPrefab, shotgunAmmoPrefab, sniperAmmoPrefab);
+
+        // ── Audio / utilities ─────────────────────────────────────────────
+        BuildAudioManager();
+
+        // ── UI (Phase 1 + Phase 2) ────────────────────────────────────────
+        BuildUI();
+
+        // ── Phase 2: VFX manager ──────────────────────────────────────────
+        BuildVFXManager();
+
+        // ── Phase 2: Minimap ──────────────────────────────────────────────
+        BuildMinimap();
+
+        // ── Lighting ──────────────────────────────────────────────────────
+        SetupLighting();
+
+        // ── Generate Animator Controller ──────────────────────────────────
+        var animCtrl = AnimatorControllerGenerator.Generate();
+
+        // ── Wire Animator Controller into player prefab ───────────────────
+        WireAnimatorControllerIntoPrefab(animCtrl);
+
+        // ── Save ──────────────────────────────────────────────────────────
+        string scenePath = SceneFolder + "/BattlegroundX_Main.unity";
+        EditorSceneManager.SaveScene(scene, scenePath);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        EditorUtility.DisplayDialog("Battleground X — Phase 2",
+            "Full scene generated at:\n" + scenePath +
+            "\n\nPhase 2 systems wired:\n" +
+            "• Animator Controller (Assets/Animations/NetworkPlayer.controller)\n" +
+            "• VFX Manager (pooled muzzle flash, hit sparks, blood)\n" +
+            "• Minimap (overhead camera + RenderTexture + safe-zone ring)\n" +
+            "• Settings Menu (sensitivity, quality, volume)\n" +
+            "• Ping Display (RTT via ServerRpc echo)\n" +
+            "• Name Tags (world-space TMP billboards)\n\n" +
+            "Remaining manual steps:\n" +
+            "1. Assign AudioClips to AudioManager in Inspector.\n" +
+            "2. Assign animation motions to Animator states.\n" +
+            "3. Link Unity Cloud project (Edit → Project Settings → Services).\n" +
+            "4. Enable Authentication & Relay in Unity Dashboard.\n" +
+            "5. Press Play → Host → share the join code.",
+            "Got it!");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TERRAIN
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildTerrain()
+    {
+        // Large flat ground (200×200 units visible play area)
+        var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        ground.name = "Terrain_Ground";
+        ground.transform.localScale = new Vector3(36, 1, 36);  // 360×360
+        ground.transform.position   = Vector3.zero;
+        SetColor(ground, new Color(0.25f, 0.42f, 0.18f));
+        ground.tag   = "Ground";
+        ground.layer = LayerMask.NameToLayer("Ground") >= 0 ? LayerMask.NameToLayer("Ground") : 0;
+
+        // Hills: a few raised cube "hills" around the edge
+        int[,] hillData = { {-130,0,-130},{130,0,-130},{-130,0,130},{130,0,130},{0,0,-155},{0,0,155} };
+        for (int i = 0; i < hillData.GetLength(0); i++)
+        {
+            var hill = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            hill.name = "Hill_" + i;
+            hill.transform.position   = new Vector3(hillData[i,0], 2.5f, hillData[i,2]);
+            hill.transform.localScale = new Vector3(30, 5, 30);
+            SetColor(hill, new Color(0.3f, 0.5f, 0.2f));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // ROADS
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildRoads()
+    {
+        var parent = new GameObject("Roads").transform;
+
+        // Main cross roads
+        CreateRoad(parent, "Road_NS", new Vector3(0, 0.02f, 0),   new Vector3(2, 0.1f, 180));
+        CreateRoad(parent, "Road_EW", new Vector3(0, 0.02f, 0),   new Vector3(180, 0.1f, 2));
+        // Diagonal roads
+        CreateRoad(parent, "Road_NE", new Vector3(60, 0.02f, 60), new Vector3(1.5f, 0.1f, 80),  45);
+        CreateRoad(parent, "Road_NW", new Vector3(-60, 0.02f, 60),new Vector3(1.5f, 0.1f, 80), -45);
+        CreateRoad(parent, "Road_SE", new Vector3(60, 0.02f,-60), new Vector3(1.5f, 0.1f, 80),  45);
+        CreateRoad(parent, "Road_SW", new Vector3(-60, 0.02f,-60),new Vector3(1.5f, 0.1f, 80), -45);
+    }
+
+    private static void CreateRoad(Transform parent, string name, Vector3 pos, Vector3 scale, float yRot = 0)
+    {
+        var r = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        r.name = name;
+        r.transform.SetParent(parent);
+        r.transform.position   = pos;
+        r.transform.localScale = scale;
+        r.transform.eulerAngles = new Vector3(0, yRot, 0);
+        SetColor(r, new Color(0.3f, 0.3f, 0.3f));
+        Object.DestroyImmediate(r.GetComponent<BoxCollider>());  // road: no collider needed (ground beneath)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // BUILDINGS
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildBuildings()
+    {
+        var parent = new GameObject("Buildings").transform;
+
+        // 4 compound clusters + isolated houses
+        Vector3[] zones = {
+            new( 60,0, 60), new(-60,0, 60), new( 60,0,-60), new(-60,0,-60),
+            new(  0,0,100), new(  0,0,-100), new(100,0,0),  new(-100,0,0)
+        };
+
+        int idx = 0;
+        foreach (var z in zones)
+        {
+            // Main building
+            CreateBuilding(parent, $"Building_{idx}_Main", z + new Vector3(0,0,0), new Vector3(12,8,10));
+            // Side house
+            CreateBuilding(parent, $"Building_{idx}_A",    z + new Vector3(16,0,5), new Vector3(7,5,7));
+            // Small shed
+            CreateBuilding(parent, $"Building_{idx}_B",    z + new Vector3(-14,0,-4), new Vector3(5,3,5));
+            idx++;
+        }
+
+        // Isolated watchtowers
+        for (int i = 0; i < 4; i++)
+        {
+            float ang = i * 90f * Mathf.Deg2Rad;
+            var pos = new Vector3(Mathf.Sin(ang) * 120, 0, Mathf.Cos(ang) * 120);
+            CreateTower(parent, "Tower_" + i, pos);
+        }
+    }
+
+    private static void CreateBuilding(Transform parent, string name, Vector3 pos, Vector3 size)
+    {
+        var root = new GameObject(name);
+        root.transform.SetParent(parent);
+        root.transform.position = pos;
+
+        // Walls (hollow box — 4 walls + roof, no floor so player can walk in)
+        float w = size.x, h = size.y, d = size.z, t = 0.4f;
+        CreateWall(root.transform, "Wall_N",  new Vector3(0,h/2f, d/2f),  new Vector3(w, h, t));
+        CreateWall(root.transform, "Wall_S",  new Vector3(0,h/2f,-d/2f),  new Vector3(w, h, t));
+        CreateWall(root.transform, "Wall_E",  new Vector3(w/2f,h/2f,0),   new Vector3(t, h, d));
+        CreateWall(root.transform, "Wall_W",  new Vector3(-w/2f,h/2f,0),  new Vector3(t, h, d));
+        CreateWall(root.transform, "Roof",    new Vector3(0, h+t/2f, 0),  new Vector3(w+t*2, t, d+t*2));
+
+        root.tag = "Building";
+    }
+
+    private static void CreateWall(Transform parent, string name, Vector3 localPos, Vector3 size)
+    {
+        var w = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        w.name = name;
+        w.transform.SetParent(parent);
+        w.transform.localPosition = localPos;
+        w.transform.localScale    = size;
+        SetColor(w, new Color(0.72f, 0.65f, 0.55f));
+        w.layer = LayerMask.NameToLayer("Building") >= 0 ? LayerMask.NameToLayer("Building") : 0;
+    }
+
+    private static void CreateTower(Transform parent, string name, Vector3 pos)
+    {
+        var root = new GameObject(name);
+        root.transform.SetParent(parent);
+        root.transform.position = pos;
+        // Base pillar
+        var base_ = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        base_.name = "Pillar";
+        base_.transform.SetParent(root.transform);
+        base_.transform.localPosition = new Vector3(0, 7, 0);
+        base_.transform.localScale    = new Vector3(1.5f, 7f, 1.5f);
+        SetColor(base_, new Color(0.5f, 0.4f, 0.3f));
+        // Platform
+        var plat = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        plat.name = "Platform";
+        plat.transform.SetParent(root.transform);
+        plat.transform.localPosition = new Vector3(0, 15.5f, 0);
+        plat.transform.localScale    = new Vector3(5, 0.4f, 5);
+        SetColor(plat, new Color(0.5f, 0.4f, 0.3f));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TREES
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildTrees()
+    {
+        var parent = new GameObject("Vegetation").transform;
+        var rng    = new System.Random(42);
+
+        for (int i = 0; i < 120; i++)
+        {
+            float x = (float)(rng.NextDouble() * 320 - 160);
+            float z = (float)(rng.NextDouble() * 320 - 160);
+
+            // Skip road area
+            if (Mathf.Abs(x) < 5 || Mathf.Abs(z) < 5) continue;
+            // Skip building cluster centres
+            bool nearBuilding = false;
+            foreach (var bz in new[] { new Vector2(60,60), new Vector2(-60,60), new Vector2(60,-60), new Vector2(-60,-60) })
+                if (Vector2.Distance(new Vector2(x,z), bz) < 20) { nearBuilding = true; break; }
+            if (nearBuilding) continue;
+
+            CreateTree(parent, i, new Vector3(x, 0, z), rng);
+        }
+    }
+
+    private static void CreateTree(Transform parent, int idx, Vector3 pos, System.Random rng)
+    {
+        float h    = 4f + (float)rng.NextDouble() * 4f;
+        float canR = 1.5f + (float)rng.NextDouble() * 2f;
+
+        var root = new GameObject("Tree_" + idx);
+        root.transform.SetParent(parent);
+        root.transform.position = pos;
+
+        // Trunk
+        var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(root.transform);
+        trunk.transform.localPosition = new Vector3(0, h * 0.5f, 0);
+        trunk.transform.localScale    = new Vector3(0.3f, h * 0.5f, 0.3f);
+        SetColor(trunk, new Color(0.36f, 0.22f, 0.1f));
+
+        // Canopy
+        var canopy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        canopy.name = "Canopy";
+        canopy.transform.SetParent(root.transform);
+        canopy.transform.localPosition = new Vector3(0, h + canR * 0.5f, 0);
+        canopy.transform.localScale    = new Vector3(canR * 2, canR * 1.5f, canR * 2);
+        SetColor(canopy, new Color(0.1f + (float)rng.NextDouble() * 0.2f,
+                                   0.4f + (float)rng.NextDouble() * 0.3f, 0.1f));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COVER OBJECTS
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildCoverObjects()
+    {
+        var parent = new GameObject("Cover").transform;
+        var rng    = new System.Random(99);
+
+        // Rocks
+        for (int i = 0; i < 40; i++)
+        {
+            float x = (float)(rng.NextDouble() * 280 - 140);
+            float z = (float)(rng.NextDouble() * 280 - 140);
+            if (Mathf.Abs(x) < 8 && Mathf.Abs(z) < 8) continue;
+
+            var rock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rock.name = "Rock_" + i;
+            rock.transform.SetParent(parent);
+            rock.transform.position   = new Vector3(x, 0.8f, z);
+            rock.transform.localScale = new Vector3(
+                1f + (float)rng.NextDouble() * 2f,
+                0.8f + (float)rng.NextDouble() * 1.5f,
+                1f + (float)rng.NextDouble() * 2f);
+            rock.transform.eulerAngles = new Vector3(0, (float)(rng.NextDouble() * 360), 0);
+            SetColor(rock, new Color(0.5f, 0.5f, 0.5f));
+        }
+
+        // Sandbag walls
+        for (int i = 0; i < 20; i++)
+        {
+            float x = (float)(rng.NextDouble() * 240 - 120);
+            float z = (float)(rng.NextDouble() * 240 - 120);
+            var sb = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            sb.name = "Sandbag_" + i;
+            sb.transform.SetParent(parent);
+            sb.transform.position   = new Vector3(x, 0.6f, z);
+            sb.transform.localScale = new Vector3(3, 1.2f, 0.5f);
+            sb.transform.eulerAngles = new Vector3(0, (float)(rng.NextDouble() * 360), 0);
+            SetColor(sb, new Color(0.76f, 0.70f, 0.50f));
+        }
+
+        // Barrels
+        for (int i = 0; i < 30; i++)
+        {
+            float x = (float)(rng.NextDouble() * 200 - 100);
+            float z = (float)(rng.NextDouble() * 200 - 100);
+            var barrel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            barrel.name = "Barrel_" + i;
+            barrel.transform.SetParent(parent);
+            barrel.transform.position   = new Vector3(x, 0.6f, z);
+            barrel.transform.localScale = new Vector3(0.5f, 0.6f, 0.5f);
+            SetColor(barrel, new Color(0.2f, 0.2f, 0.2f));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // BRIDGES
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildBridges()
+    {
+        var parent = new GameObject("Bridges").transform;
+        // Two raised bridges crossing central gully
+        CreateBridge(parent, "Bridge_NS", new Vector3(0, 2f, 0),   new Vector3(4, 0.4f, 30));
+        CreateBridge(parent, "Bridge_EW", new Vector3(0, 2f, 0),   new Vector3(30, 0.4f, 4));
+    }
+
+    private static void CreateBridge(Transform parent, string name, Vector3 pos, Vector3 size)
+    {
+        var b = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        b.name = name;
+        b.transform.SetParent(parent);
+        b.transform.position   = pos;
+        b.transform.localScale = size;
+        SetColor(b, new Color(0.55f, 0.5f, 0.45f));
+        // Railings
+        for (int s = -1; s <= 1; s += 2)
+        {
+            var rail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rail.transform.SetParent(b.transform);
+            float side = (size.x > size.z) ? (size.z * 0.5f - 0.1f) * s : 0;
+            float sideZ= (size.z > size.x) ? (size.x * 0.5f - 0.1f) * s : 0;
+            rail.transform.localPosition = new Vector3(side, 0.75f, sideZ);
+            rail.transform.localScale    = new Vector3(
+                size.x > size.z ? 1f : 0.1f,
+                0.3f,
+                size.z > size.x ? 1f : 0.1f);
+            SetColor(rail, new Color(0.4f, 0.35f, 0.3f));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // NETWORK MANAGER
+    // ─────────────────────────────────────────────────────────────────────
+    private static GameObject BuildNetworkManager(GameObject playerPrefab)
+    {
+        var nmGo      = new GameObject("NetworkManager");
+        var nm        = nmGo.AddComponent<NetworkManager>();
+        var transport = nmGo.AddComponent<UnityTransport>();
+        nm.NetworkConfig = new NetworkConfig
+        {
+            NetworkTransport = transport,
+            PlayerPrefab     = playerPrefab,
+            TickRate         = 30
+        };
+        return nmGo;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // MATCH OBJECTS
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildMatchObjects()
+    {
+        // Match manager
+        var matchGo = new GameObject("NetworkMatchManager");
+        matchGo.AddComponent<NetworkObject>();
+        matchGo.AddComponent<NetworkMatchManager>();
+
+        // Safe zone
+        var zoneGo = new GameObject("NetworkSafeZone");
+        zoneGo.AddComponent<NetworkObject>();
+        var zoneVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        zoneVisual.name = "SafeZoneVisual";
+        zoneVisual.transform.SetParent(zoneGo.transform);
+        zoneVisual.transform.localPosition = new Vector3(0, 0.03f, 0);
+        zoneVisual.transform.localScale    = new Vector3(360, 0.02f, 360);
+        Object.DestroyImmediate(zoneVisual.GetComponent<Collider>());
+        var zoneRend = zoneVisual.GetComponent<Renderer>();
+        if (zoneRend != null)
+        {
+            var mat = new Material(Shader.Find("Standard"));
+            mat.color = new Color(0.0f, 0.5f, 1f, 0.25f);
+            SetTransparent(mat);
+            zoneRend.sharedMaterial = mat;
+        }
+        var zone = zoneGo.AddComponent<NetworkSafeZone>();
+        var zoneSO = new SerializedObject(zone);
+        zoneSO.FindProperty("visualRing").objectReferenceValue = zoneVisual.transform;
+        zoneSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // Spawn manager
+        var spawnGo = new GameObject("SpawnManager");
+        spawnGo.AddComponent<NetworkObject>();
+        spawnGo.AddComponent<SpawnManager>();
+
+        // Lobby manager
+        var lobbyGo = new GameObject("LobbyManager");
+        lobbyGo.AddComponent<NetworkObject>();
+        lobbyGo.AddComponent<LobbyManager>();
+
+        // Audio manager
+        var audioGo = new GameObject("AudioManager");
+        audioGo.AddComponent<AudioManager>();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SPAWN POINTS
+    // ─────────────────────────────────────────────────────────────────────
+    private static Transform BuildSpawnPoints()
+    {
+        var parent = new GameObject("SpawnPoints").transform;
+
+        // 10 evenly distributed spawn points around the map edge
+        for (int i = 0; i < 10; i++)
+        {
+            float ang = (i / 10f) * Mathf.PI * 2f;
+            float r   = 110f + (i % 3) * 15f;
+            var sp = new GameObject("SpawnPoint_" + i);
+            sp.transform.SetParent(parent);
+            sp.transform.position = new Vector3(Mathf.Sin(ang) * r, 0.5f, Mathf.Cos(ang) * r);
+            sp.tag = "SpawnPoint";
+
+            // Visual marker (editor only gizmo via child cube)
+            var marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            marker.name = "Marker";
+            marker.transform.SetParent(sp.transform);
+            marker.transform.localPosition = Vector3.zero;
+            marker.transform.localScale    = new Vector3(1f, 0.1f, 1f);
+            SetColor(marker, new Color(0f, 1f, 0f, 0.5f));
+            Object.DestroyImmediate(marker.GetComponent<BoxCollider>());
+        }
+
+        // Wire SpawnManager
+        var sm = Object.FindObjectOfType<SpawnManager>();
+        if (sm != null)
+        {
+            var smSO = new SerializedObject(sm);
+            var spArr = smSO.FindProperty("spawnPoints");
+            spArr.arraySize = parent.childCount;
+            for (int i = 0; i < parent.childCount; i++)
+                spArr.GetArrayElementAtIndex(i).objectReferenceValue = parent.GetChild(i);
+            smSO.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        return parent;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LOOT SPAWNER + LOOT ZONE MARKERS
+    // ─────────────────────────────────────────────────────────────────────
+    private static Transform BuildLootSpawner(
+        GameObject medkit, GameObject rifleAmmo, GameObject shotgunAmmo, GameObject sniperAmmo)
+    {
+        var parent = new GameObject("LootZones").transform;
+
+        // 30 loot spawn markers spread across the map
+        var rng = new System.Random(7);
+        for (int i = 0; i < 30; i++)
+        {
+            float x = (float)(rng.NextDouble() * 280 - 140);
+            float z = (float)(rng.NextDouble() * 280 - 140);
+
+            var lp = new GameObject("LootPoint_" + i);
+            lp.transform.SetParent(parent);
+            lp.transform.position = new Vector3(x, 0.5f, z);
+
+            // Visual marker
+            var marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            marker.name = "LootMarker";
+            marker.transform.SetParent(lp.transform);
+            marker.transform.localPosition = Vector3.zero;
+            marker.transform.localScale    = new Vector3(0.4f, 0.4f, 0.4f);
+            SetColor(marker, new Color(1f, 0.85f, 0f));
+            Object.DestroyImmediate(marker.GetComponent<SphereCollider>());
+        }
+
+        // LootSpawner NetworkObject
+        var lsGo = new GameObject("LootSpawner");
+        lsGo.AddComponent<NetworkObject>();
+        var ls = lsGo.AddComponent<LootSpawner>();
+        var lsSO = new SerializedObject(ls);
+        // Wire prefabs (requires prefabs were saved to disk)
+        lsSO.FindProperty("medkitPrefab").objectReferenceValue      = medkit?.GetComponent<NetworkLootPickup>();
+        lsSO.FindProperty("rifleAmmoPrefab").objectReferenceValue   = rifleAmmo?.GetComponent<NetworkLootPickup>();
+        lsSO.FindProperty("shotgunAmmoPrefab").objectReferenceValue = shotgunAmmo?.GetComponent<NetworkLootPickup>();
+        lsSO.FindProperty("sniperAmmoPrefab").objectReferenceValue  = sniperAmmo?.GetComponent<NetworkLootPickup>();
+
+        // Wire spawn points array
+        var spArr = lsSO.FindProperty("lootSpawnPoints");
+        spArr.arraySize = parent.childCount;
+        for (int i = 0; i < parent.childCount; i++)
+            spArr.GetArrayElementAtIndex(i).objectReferenceValue = parent.GetChild(i);
+
+        lsSO.ApplyModifiedPropertiesWithoutUndo();
+        return parent;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // AUDIO MANAGER
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildAudioManager()
+    {
+        // Already created in BuildMatchObjects; nothing extra needed here.
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UI
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildUI()
+    {
+        // ── Event System ──────────────────────────────────────────────────
+        new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+
+        // ── Main Canvas ───────────────────────────────────────────────────
+        var canvasGo = new GameObject("GameCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        var canvas   = canvasGo.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        var scaler = canvasGo.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode       = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        // ── Connection panel ──────────────────────────────────────────────
+        var connPanel   = CreatePanel(canvasGo.transform, "ConnectionPanel",
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -20), new Vector2(760, 220),
+            new Color(0,0,0,0.75f));
+        var relayGo     = new GameObject("RelaySessionUI");
+        var relay       = relayGo.AddComponent<RelaySessionUI>();
+
+        var joinInput   = CreateInput(connPanel.transform, "JoinCodeInput",   "Enter Relay Join Code", new Vector2(0, -20));
+        var codeText    = CreateText(connPanel.transform,  "JoinCodeText",    "JOIN CODE: —",          new Vector2(0, -60), 24);
+        var statusText  = CreateText(connPanel.transform,  "StatusText",      "Initializing…",         new Vector2(0, -90), 18);
+        var playerList  = CreateText(connPanel.transform,  "PlayerListText",  "",                      new Vector2(0, -130), 16);
+
+        CreateButton(connPanel.transform, "HostButton",  "HOST",  new Vector2(-220, -175), () => relay.HostGame());
+        CreateButton(connPanel.transform, "JoinButton",  "JOIN",  new Vector2(0,    -175), () => relay.JoinGame());
+        CreateButton(connPanel.transform, "LeaveButton", "LEAVE", new Vector2( 220, -175), () => relay.LeaveGame());
+
+        var relaySO = new SerializedObject(relay);
+        relaySO.FindProperty("joinCodeInput").objectReferenceValue  = joinInput;
+        relaySO.FindProperty("joinCodeText").objectReferenceValue   = codeText;
+        relaySO.FindProperty("statusText").objectReferenceValue     = statusText;
+        relaySO.FindProperty("playerListText").objectReferenceValue = playerList;
+        relaySO.ApplyModifiedPropertiesWithoutUndo();
+
+        // ── HUD ───────────────────────────────────────────────────────────
+        // Health
+        var healthText   = CreateText(canvasGo.transform, "HealthText",  "HP: 100", new Vector2(-820, -520), 28);
+        // Health bar
+        var healthSlider = CreateSlider(canvasGo.transform, "HealthSlider", new Vector2(-820, -545));
+
+        // Ammo
+        var ammoText      = CreateText(canvasGo.transform, "AmmoText",      "30 / 150",    new Vector2(820, -520), 28);
+        var weaponText    = CreateText(canvasGo.transform, "WeaponNameText","Assault Rifle",new Vector2(820, -550), 20);
+        var reloadingText = CreateText(canvasGo.transform, "ReloadingText", "RELOADING…",  new Vector2(820, -575), 20);
+
+        // Match info
+        var playersText = CreateText(canvasGo.transform, "PlayersText",    "⬟ 10",   new Vector2(820, 520), 26);
+        var timerText   = CreateText(canvasGo.transform, "TimerText",      "15:00",   new Vector2(0,  520), 32);
+        var phaseText   = CreateText(canvasGo.transform, "PhaseText",      "Lobby",   new Vector2(0,  490), 20);
+
+        // Zone
+        var zoneText    = CreateText(canvasGo.transform, "ZoneText",       "SAFE",    new Vector2(820, 490), 22);
+
+        // Kill feed
+        var killFeedGo = new GameObject("KillFeedContainer", typeof(RectTransform), typeof(VerticalLayoutGroup));
+        killFeedGo.transform.SetParent(canvasGo.transform, false);
+        var kfRT = killFeedGo.GetComponent<RectTransform>();
+        kfRT.anchorMin        = new Vector2(1,0.5f);
+        kfRT.anchorMax        = new Vector2(1,0.5f);
+        kfRT.pivot            = new Vector2(1,0.5f);
+        kfRT.anchoredPosition = new Vector2(-20, 0);
+        kfRT.sizeDelta        = new Vector2(400, 200);
+        var vlg = killFeedGo.GetComponent<VerticalLayoutGroup>();
+        vlg.childAlignment    = TextAnchor.LowerRight;
+        vlg.spacing           = 4;
+
+        // Kill feed entry prefab text
+        var kfEntry = CreateText(canvasGo.transform, "KillFeedEntry_Prefab", "", Vector2.zero, 18);
+        kfEntry.gameObject.SetActive(false);
+
+        // Match end panel
+        var matchEndPanel = CreatePanel(canvasGo.transform, "MatchEndPanel",
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 400),
+            new Color(0,0,0,0.9f));
+        matchEndPanel.gameObject.SetActive(false);
+        var matchResultText = CreateText(matchEndPanel.transform, "MatchResultText", "WINNER!", Vector2.zero, 48);
+        var statsText       = CreateText(matchEndPanel.transform, "StatsText", "", new Vector2(0,-80), 22);
+        var returnBtn       = CreateButton(matchEndPanel.transform, "ReturnBtn", "Return to Lobby",
+            new Vector2(0, -170), null);
+
+        // Lobby status panel
+        var lobbyPanel = CreatePanel(canvasGo.transform, "LobbyStatusPanel",
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(400, 160),
+            new Color(0,0,0,0.6f));
+        var readyCountText = CreateText(lobbyPanel.transform, "ReadyCountText", "Ready: 0/0", Vector2.zero, 28);
+        var readyBtn       = CreateButton(lobbyPanel.transform, "ReadyButton", "READY", new Vector2(0,-60), null);
+
+        // Countdown panel
+        var countdownPanel = CreatePanel(canvasGo.transform, "CountdownPanel",
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(300, 200),
+            new Color(0,0,0,0.7f));
+        countdownPanel.gameObject.SetActive(false);
+        var countdownText = CreateText(countdownPanel.transform, "CountdownText", "5", Vector2.zero, 96);
+
+        // ── Wire NetworkHUD ───────────────────────────────────────────────
+        var hudGo = new GameObject("NetworkHUD");
+        var hud   = hudGo.AddComponent<NetworkHUD>();
+        var hudSO = new SerializedObject(hud);
+        hudSO.FindProperty("healthText").objectReferenceValue        = healthText;
+        hudSO.FindProperty("healthSlider").objectReferenceValue      = healthSlider;
+        hudSO.FindProperty("ammoText").objectReferenceValue          = ammoText;
+        hudSO.FindProperty("weaponNameText").objectReferenceValue    = weaponText;
+        hudSO.FindProperty("reloadingText").objectReferenceValue     = reloadingText;
+        hudSO.FindProperty("playersText").objectReferenceValue       = playersText;
+        hudSO.FindProperty("timerText").objectReferenceValue         = timerText;
+        hudSO.FindProperty("phaseText").objectReferenceValue         = phaseText;
+        hudSO.FindProperty("zoneText").objectReferenceValue          = zoneText;
+        hudSO.FindProperty("killFeedContainer").objectReferenceValue = killFeedGo.transform;
+        hudSO.FindProperty("killFeedEntryPrefab").objectReferenceValue = kfEntry;
+        hudSO.FindProperty("matchEndPanel").objectReferenceValue     = matchEndPanel.gameObject;
+        hudSO.FindProperty("matchResultText").objectReferenceValue   = matchResultText;
+        hudSO.FindProperty("statsText").objectReferenceValue         = statsText;
+        hudSO.FindProperty("returnToLobbyButton").objectReferenceValue = returnBtn;
+        hudSO.FindProperty("lobbyStatusPanel").objectReferenceValue  = lobbyPanel.gameObject;
+        hudSO.FindProperty("readyCountText").objectReferenceValue    = readyCountText;
+        hudSO.FindProperty("readyButton").objectReferenceValue       = readyBtn;
+        hudSO.FindProperty("countdownPanel").objectReferenceValue    = countdownPanel.gameObject;
+        hudSO.FindProperty("countdownText").objectReferenceValue     = countdownText;
+        hudSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // ── Wire RelaySessionUI extra fields ──────────────────────────────
+        relaySO.FindProperty("lobbyPanel").objectReferenceValue      = connPanel.gameObject;
+        relaySO.FindProperty("countdownPanel").objectReferenceValue  = countdownPanel.gameObject;
+        relaySO.FindProperty("countdownText").objectReferenceValue   = countdownText;
+        relaySO.ApplyModifiedPropertiesWithoutUndo();
+
+        // ── Phase 2 UI: Minimap RawImage ──────────────────────────────────
+        var minimapPanel = CreatePanel(canvasGo.transform, "MinimapPanel",
+            new Vector2(1f, 0f), new Vector2(1f, 0f),
+            new Vector2(-85f, 85f), new Vector2(160f, 160f),
+            new Color(0f, 0f, 0f, 0.6f));
+        var minimapImageGo = new GameObject("MinimapImage",
+            typeof(RectTransform), typeof(RawImage));
+        minimapImageGo.transform.SetParent(minimapPanel.transform, false);
+        var mmRT = minimapImageGo.GetComponent<RectTransform>();
+        mmRT.anchorMin = Vector2.zero; mmRT.anchorMax = Vector2.one;
+        mmRT.offsetMin = new Vector2(4, 4); mmRT.offsetMax = new Vector2(-4, -4);
+        var mmRawImage = minimapImageGo.GetComponent<RawImage>();
+
+        // Wire minimap RawImage into NetworkHUD
+        hudSO.FindProperty("minimapImage").objectReferenceValue = mmRawImage;
+        hudSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // ── Phase 2 UI: Ping display ──────────────────────────────────────
+        var pingText = CreateText(canvasGo.transform, "PingText", "Ping: -- ms",
+            new Vector2(-820f, 520f), 18f);
+        pingText.color = Color.green;
+
+        // ── Phase 2 UI: Settings button ───────────────────────────────────
+        var settingsGo = new GameObject("SettingsMenu");
+        var settingsMenu = settingsGo.AddComponent<SettingsMenu>();
+
+        var settingsPanel = CreatePanel(canvasGo.transform, "SettingsPanel",
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(560f, 520f),
+            new Color(0.05f, 0.05f, 0.05f, 0.95f));
+        settingsPanel.gameObject.SetActive(false);
+
+        // Settings content rows
+        var sensTitleText  = CreateText(settingsPanel.transform, "SensTitle",   "SENSITIVITY",    new Vector2(0, 220), 22);
+        var mouseSensLabel = CreateText(settingsPanel.transform, "MouseSensLbl","Mouse Sens: 2.0",new Vector2(-80,180), 18);
+        var mouseSensSlider= CreateSlider(settingsPanel.transform, "MouseSensSlider", new Vector2(80, 180));
+        var mobSensLabel   = CreateText(settingsPanel.transform, "MobSensLbl",  "Touch Sens: 1.5",new Vector2(-80,140), 18);
+        var mobSensSlider  = CreateSlider(settingsPanel.transform, "MobSensSlider", new Vector2(80, 140));
+
+        var graphTitle     = CreateText(settingsPanel.transform, "GraphTitle",  "GRAPHICS",       new Vector2(0, 90),  22);
+        // Quality dropdown (simple label + placeholder dropdown)
+        var qualLabel      = CreateText(settingsPanel.transform, "QualLabel",   "Quality",        new Vector2(-120, 50), 18);
+
+        var audioTitle     = CreateText(settingsPanel.transform, "AudioTitle",  "AUDIO",          new Vector2(0, -10), 22);
+        var masterVolLabel = CreateText(settingsPanel.transform, "MasterVolLbl","Master Vol: 1.0",new Vector2(-80,-50), 18);
+        var masterVolSlider= CreateSlider(settingsPanel.transform, "MasterVolSlider", new Vector2(80, -50));
+        var sfxVolLabel    = CreateText(settingsPanel.transform, "SFXVolLbl",   "SFX Vol: 0.8",  new Vector2(-80,-90), 18);
+        var sfxVolSlider   = CreateSlider(settingsPanel.transform, "SFXVolSlider", new Vector2(80, -90));
+
+        var applyBtn  = CreateButton(settingsPanel.transform, "ApplyButton",  "APPLY",  new Vector2(-80, -180), null);
+        var closeBtn  = CreateButton(settingsPanel.transform, "CloseButton",  "CLOSE",  new Vector2( 80, -180), null);
+
+        // Settings open button on HUD (gear icon)
+        var settingsOpenBtn = CreateButton(canvasGo.transform, "SettingsOpenButton", "⚙",
+            new Vector2(-820f, 490f), null);
+
+        // Wire SettingsMenu
+        var smSO = new SerializedObject(settingsMenu);
+        smSO.FindProperty("settingsPanel").objectReferenceValue      = settingsPanel.gameObject;
+        smSO.FindProperty("closeButton").objectReferenceValue        = closeBtn;
+        smSO.FindProperty("applyButton").objectReferenceValue        = applyBtn;
+        smSO.FindProperty("mouseSensSlider").objectReferenceValue    = mouseSensSlider;
+        smSO.FindProperty("mouseSensLabel").objectReferenceValue     = mouseSensLabel;
+        smSO.FindProperty("mobileSensSlider").objectReferenceValue   = mobSensSlider;
+        smSO.FindProperty("mobileSensLabel").objectReferenceValue    = mobSensLabel;
+        smSO.FindProperty("masterVolumeSlider").objectReferenceValue = masterVolSlider;
+        smSO.FindProperty("masterVolumeLabel").objectReferenceValue  = masterVolLabel;
+        smSO.FindProperty("sfxVolumeSlider").objectReferenceValue    = sfxVolSlider;
+        smSO.FindProperty("sfxVolumeLabel").objectReferenceValue     = sfxVolLabel;
+        smSO.ApplyModifiedPropertiesWithoutUndo();
+
+        // Wire open button to SettingsMenu.ToggleSettings
+        settingsOpenBtn.onClick.AddListener(() => settingsMenu.ToggleSettings());
+
+        // ── Phase 2 UI: Screen flash image (for VFXManager) ───────────────
+        var flashGo = new GameObject("ScreenFlash", typeof(RectTransform), typeof(Image));
+        flashGo.transform.SetParent(canvasGo.transform, false);
+        var flashRT = flashGo.GetComponent<RectTransform>();
+        flashRT.anchorMin = Vector2.zero; flashRT.anchorMax = Vector2.one;
+        flashRT.offsetMin = Vector2.zero; flashRT.offsetMax = Vector2.zero;
+        var flashImg = flashGo.GetComponent<Image>();
+        flashImg.color = new Color(1f, 0f, 0f, 0f);
+        flashImg.raycastTarget = false;
+        flashGo.SetActive(false);
+
+        // ── Create VFXManager and wire screen flash ───────────────────────
+        var vfxGo = Object.FindObjectOfType<VFXManager>()?.gameObject
+                    ?? new GameObject("VFXManager");
+        var vfx = vfxGo.GetComponent<VFXManager>() ?? vfxGo.AddComponent<VFXManager>();
+        var vfxSO = new SerializedObject(vfx);
+        vfxSO.FindProperty("screenFlashImage").objectReferenceValue = flashImg;
+        vfxSO.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LIGHTING
+    // ─────────────────────────────────────────────────────────────────────
+    private static void SetupLighting()
+    {
+        var sun = Object.FindObjectOfType<Light>();
+        if (sun != null)
+        {
+            sun.type      = LightType.Directional;
+            sun.intensity = 1.2f;
+            sun.color     = new Color(1f, 0.97f, 0.88f);
+            sun.shadows   = LightShadows.Soft;
+            sun.transform.eulerAngles = new Vector3(55, -30, 0);
+        }
+
+        RenderSettings.ambientMode      = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientSkyColor  = new Color(0.5f, 0.6f, 0.7f);
+        RenderSettings.fog              = true;
+        RenderSettings.fogColor         = new Color(0.7f, 0.75f, 0.8f);
+        RenderSettings.fogMode          = FogMode.Linear;
+        RenderSettings.fogStartDistance = 100f;
+        RenderSettings.fogEndDistance   = 400f;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PLAYER PREFAB
+    // ─────────────────────────────────────────────────────────────────────
+    private static GameObject CreatePlayerPrefab()
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        go.name = "NetworkPlayer";
+        SetColor(go, new Color(0.25f, 0.55f, 0.9f));
+
+        // Replace CapsuleCollider with CharacterController
+        Object.DestroyImmediate(go.GetComponent<CapsuleCollider>());
+        var cc = go.AddComponent<CharacterController>();
+        cc.height = 2f;
+        cc.radius = 0.4f;
+        cc.center = new Vector3(0, 1f, 0);
+
+        go.layer = LayerMask.NameToLayer("Player") >= 0 ? LayerMask.NameToLayer("Player") : 0;
+        go.tag   = "Player";
+
+        // Camera pivot
+        var pivot = new GameObject("CameraPivot").transform;
+        pivot.SetParent(go.transform, false);
+        pivot.localPosition = new Vector3(0, 0.7f, 0);
+        pivot.gameObject.SetActive(false);
+
+        // Camera shake on pivot
+        pivot.gameObject.AddComponent<CameraShake>();
+
+        // Player camera
+        var camGo = new GameObject("PlayerCamera");
+        camGo.transform.SetParent(pivot, false);
+        camGo.transform.localPosition = new Vector3(0.4f, 0.2f, -3.5f);
+        var cam = camGo.AddComponent<Camera>();
+        cam.fieldOfView  = 65f;
+        cam.nearClipPlane = 0.1f;
+        cam.farClipPlane  = 800f;
+        camGo.AddComponent<AudioListener>();
+        camGo.SetActive(false);
+
+        // Network components
+        go.AddComponent<NetworkObject>();
+        go.AddComponent<OwnerNetworkTransform>();
+
+        // Gameplay components
+        var ctrl = go.AddComponent<NetworkPlayerController>();
+        var ctrlSO = new SerializedObject(ctrl);
+        ctrlSO.FindProperty("cameraPivot").objectReferenceValue = pivot;
+        ctrlSO.FindProperty("playerCamera").objectReferenceValue = cam;
+        ctrlSO.ApplyModifiedPropertiesWithoutUndo();
+
+        go.AddComponent<NetworkHealth>();
+        go.AddComponent<NetworkWeapon>();
+        var weapSO = new SerializedObject(go.GetComponent<NetworkWeapon>());
+        weapSO.ApplyModifiedPropertiesWithoutUndo();
+
+        go.AddComponent<PlayerInventory>();
+        go.AddComponent<PlayerStats>();
+        go.AddComponent<SpectatorController>();
+
+        // ── Phase 2 components ────────────────────────────────────────────
+        // Animator driver (requires Animator to be added after prefab open in Editor)
+        go.AddComponent<PlayerAnimatorController>();
+        // Blood VFX (subscribes to NetworkHealth.OnHealthChanged)
+        go.AddComponent<BloodEffect>();
+        // Name tag (world-space billboard)
+        go.AddComponent<NameTag>();
+        // Ping display (NetworkBehaviour — one per local client)
+        go.AddComponent<PingDisplay>();
+
+        // Muzzle point (empty child at weapon barrel position)
+        var muzzleGo = new GameObject("MuzzlePoint");
+        muzzleGo.transform.SetParent(go.transform, false);
+        muzzleGo.transform.localPosition = new Vector3(0f, 0.9f, 1.2f);
+        muzzleGo.AddComponent<MuzzleFlash>();
+
+        // Save prefab
+        string path = PrefabFolder + "/NetworkPlayer.prefab";
+        var prefab  = PrefabUtility.SaveAsPrefabAsset(go, path);
+        Object.DestroyImmediate(go);
+        return prefab;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LOOT PREFABS
+    // ─────────────────────────────────────────────────────────────────────
+    private static GameObject CreateLootPrefab(string name, LootType type, int amount, Color color)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        go.name = name;
+        go.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+        SetColor(go, color);
+
+        // Trigger collider for auto-pickup
+        var col = go.GetComponent<BoxCollider>();
+        col.isTrigger = true;
+        col.size      = new Vector3(2f, 2f, 2f);
+
+        go.AddComponent<NetworkObject>();
+        var pickup = go.AddComponent<NetworkLootPickup>();
+        var pSO = new SerializedObject(pickup);
+        pSO.FindProperty("lootType").enumValueIndex = (int)type;
+        pSO.FindProperty("amount").intValue         = amount;
+        pSO.ApplyModifiedPropertiesWithoutUndo();
+
+        string path   = PrefabFolder + "/" + name + ".prefab";
+        var    prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
+        Object.DestroyImmediate(go);
+        return prefab;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UI HELPERS
+    // ─────────────────────────────────────────────────────────────────────
+    private static RectTransform CreatePanel(Transform parent, string name,
+        Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 size, Color bg)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(parent, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin        = anchorMin;
+        rt.anchorMax        = anchorMax;
+        rt.pivot            = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = anchoredPos;
+        rt.sizeDelta        = size;
+        go.GetComponent<Image>().color = bg;
+        return rt;
+    }
+
+    private static TMP_Text CreateText(Transform parent, string name, string value, Vector2 pos, float size)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.sizeDelta        = new Vector2(600, 40);
+        rt.anchoredPosition = pos;
+        var tmp = go.GetComponent<TextMeshProUGUI>();
+        tmp.text      = value;
+        tmp.fontSize  = size;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color     = Color.white;
+        return tmp;
+    }
+
+    private static Slider CreateSlider(Transform parent, string name, Vector2 pos)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Slider));
+        go.transform.SetParent(parent, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.sizeDelta        = new Vector2(220, 20);
+        rt.anchoredPosition = pos;
+        var slider = go.GetComponent<Slider>();
+        slider.minValue  = 0;
+        slider.maxValue  = 1;
+        slider.value     = 1;
+
+        var bg = new GameObject("Background", typeof(RectTransform), typeof(Image));
+        bg.transform.SetParent(go.transform, false);
+        var bgRT = bg.GetComponent<RectTransform>();
+        bgRT.anchorMin = Vector2.zero; bgRT.anchorMax = Vector2.one;
+        bgRT.sizeDelta = Vector2.zero;
+        bg.GetComponent<Image>().color = new Color(0.2f,0.2f,0.2f,0.8f);
+
+        var fill = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+        fill.transform.SetParent(go.transform, false);
+        var fillRT = fill.GetComponent<RectTransform>();
+        fillRT.anchorMin = Vector2.zero; fillRT.anchorMax = new Vector2(1,1);
+        fillRT.sizeDelta = Vector2.zero;
+        fill.GetComponent<Image>().color = new Color(0.1f, 0.9f, 0.2f);
+        slider.fillRect = fillRT;
+
+        return slider;
+    }
+
+    private static TMP_InputField CreateInput(Transform parent, string name, string placeholder, Vector2 pos)
+    {
+        var root = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
+        root.transform.SetParent(parent, false);
+        var rt = root.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(380, 36); rt.anchoredPosition = pos;
+        root.GetComponent<Image>().color = Color.white;
+
+        var text = CreateText(root.transform, "Text", "", Vector2.zero, 20);
+        var textRT = text.GetComponent<RectTransform>();
+        textRT.anchorMin = Vector2.zero; textRT.anchorMax = Vector2.one;
+        textRT.offsetMin = new Vector2(8,2); textRT.offsetMax = new Vector2(-8,-2);
+        text.color = Color.black;
+
+        var ph = CreateText(root.transform, "Placeholder", placeholder, Vector2.zero, 18);
+        ph.color = Color.gray;
+        var phRT = ph.GetComponent<RectTransform>();
+        phRT.anchorMin = Vector2.zero; phRT.anchorMax = Vector2.one;
+        phRT.offsetMin = new Vector2(8,2); phRT.offsetMax = new Vector2(-8,-2);
+
+        var input = root.GetComponent<TMP_InputField>();
+        input.textComponent = text;
+        input.placeholder   = ph;
+        return input;
+    }
+
+    private static Button CreateButton(Transform parent, string name, string label, Vector2 pos,
+        UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+        go.transform.SetParent(parent, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(170, 40); rt.anchoredPosition = pos;
+        go.GetComponent<Image>().color = new Color(0.1f, 0.42f, 0.22f);
+        CreateText(go.transform, "Label", label, Vector2.zero, 20);
+        var labelRT = go.transform.Find("Label").GetComponent<RectTransform>();
+        labelRT.anchorMin = Vector2.zero; labelRT.anchorMax = Vector2.one;
+        labelRT.offsetMin = Vector2.zero; labelRT.offsetMax = Vector2.zero;
+        var btn = go.GetComponent<Button>();
+        if (onClick != null) btn.onClick.AddListener(onClick);
+        return btn;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UTILITY
+    // ─────────────────────────────────────────────────────────────────────
+    private static void SetColor(GameObject go, Color c)
+    {
+        var rend = go.GetComponent<Renderer>();
+        if (rend == null) return;
+        var mat  = new Material(Shader.Find("Standard") ?? Shader.Find("Diffuse"));
+        mat.color = c;
+        if (c.a < 1f) SetTransparent(mat);
+        rend.sharedMaterial = mat;
+    }
+
+    private static void SetTransparent(Material mat)
+    {
+        mat.SetFloat("_Mode", 3);
+        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        mat.SetInt("_ZWrite",   0);
+        mat.DisableKeyword("_ALPHATEST_ON");
+        mat.EnableKeyword("_ALPHABLEND_ON");
+        mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        mat.renderQueue = 3000;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PHASE 2: VFX MANAGER
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildVFXManager()
+    {
+        // VFXManager is created in BuildUI() and wired with the screen flash image.
+        // This method handles any VFX not dependent on UI (future: explosion prefabs etc.)
+        var existing = Object.FindObjectOfType<VFXManager>();
+        if (existing == null)
+        {
+            var go = new GameObject("VFXManager");
+            go.AddComponent<VFXManager>();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PHASE 2: MINIMAP
+    // ─────────────────────────────────────────────────────────────────────
+    private static void BuildMinimap()
+    {
+        // MinimapController GO — holds the overhead camera
+        var mmGo = new GameObject("MinimapSystem");
+        var mmCtrl = mmGo.AddComponent<MinimapController>();
+
+        // Find the RawImage already created in BuildUI and wire it
+        var rawImage = Object.FindObjectOfType<RawImage>();
+        // More precise: search by name
+        var mmImageGo = GameObject.Find("MinimapImage");
+        if (mmImageGo != null)
+        {
+            var ri = mmImageGo.GetComponent<RawImage>();
+            if (ri != null)
+            {
+                var so = new SerializedObject(mmCtrl);
+                so.FindProperty("hudMinimapImage").objectReferenceValue = ri;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        // Safe zone ring on minimap
+        mmGo.AddComponent<MinimapSafeZoneRing>();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PHASE 2: WIRE ANIMATOR CONTROLLER INTO PREFAB
+    // ─────────────────────────────────────────────────────────────────────
+    private static void WireAnimatorControllerIntoPrefab(AnimatorController ctrl)
+    {
+        if (ctrl == null) return;
+
+        string prefabPath = PrefabFolder + "/NetworkPlayer.prefab";
+        var prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        if (prefabAsset == null)
+        {
+            Debug.LogWarning("[BattlegroundX] NetworkPlayer prefab not found — cannot wire Animator.");
+            return;
+        }
+
+        // Open prefab for editing
+        using (var scope = new PrefabUtility.EditPrefabContentsScope(prefabPath))
+        {
+            var root = scope.prefabContentsRoot;
+
+            // Add Animator if missing
+            var anim = root.GetComponent<Animator>();
+            if (anim == null) anim = root.AddComponent<Animator>();
+            anim.runtimeAnimatorController = ctrl;
+            anim.applyRootMotion           = false;
+            anim.updateMode                = AnimatorUpdateMode.Normal;
+            anim.cullingMode               = AnimatorCullingMode.AlwaysAnimate;
+        }
+
+        AssetDatabase.SaveAssets();
+        Debug.Log("[BattlegroundX] Animator Controller wired into NetworkPlayer prefab.");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    private static void EnsureFolders()
+    {
+        foreach (var path in new[] { PrefabFolder, SceneFolder, MatFolder, AnimFolder,
+            "Assets/Scripts/Audio", "Assets/Scripts/Data" })
+        {
+            if (AssetDatabase.IsValidFolder(path)) continue;
+            string parent = Path.GetDirectoryName(path)?.Replace("\\", "/") ?? "Assets";
+            string folder = Path.GetFileName(path);
+            if (!AssetDatabase.IsValidFolder(parent)) AssetDatabase.CreateFolder(
+                Path.GetDirectoryName(parent)?.Replace("\\","/") ?? "Assets",
+                Path.GetFileName(parent));
+            AssetDatabase.CreateFolder(parent, folder);
+        }
+    }
+}

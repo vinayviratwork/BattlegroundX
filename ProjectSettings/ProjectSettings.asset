@@ -1,0 +1,253 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  serializedVersion: 23
+  m_ObjectHideFlags: 0
+  m_BuildTargetList: []
+  m_CompanyName: YourStudio
+  m_ProductName: Battleground X
+  m_DefaultCursor: {fileID: 0}
+  m_CursorHotspot: {x: 0, y: 0}
+  m_SplashScreenBackgroundColor: {r: 0.08, g: 0.08, b: 0.08, a: 1}
+  m_ShowUnitySplashScreen: 0
+  m_ShowUnitySplashLogo: 0
+  m_SplashScreenOverlayOpacity: 1
+  m_SplashScreenAnimation: 1
+  m_SplashScreenLogoStyle: 1
+  m_SplashScreenDrawMode: 0
+  m_SplashScreenBackgroundAnimationZoom: 1
+  m_SplashScreenLogoAnimationZoom: 1
+  m_SplashScreenBackgroundLandscapeAspect: 1
+  m_SplashScreenBackgroundPortraitAspect: 1
+  m_SplashScreenBackgroundLandscapeUvs:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  m_SplashScreenBackgroundPortraitUvs:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  m_SplashScreenLogos: []
+  m_VirtualRealitySplashScreen: {fileID: 0}
+  m_HolographicTrackingLossScreen: {fileID: 0}
+  defaultScreenWidth: 1920
+  defaultScreenHeight: 1080
+  defaultScreenWidthWeb: 960
+  defaultScreenHeightWeb: 600
+  m_StereoRenderingPath: 0
+  m_ActiveColorSpace: 1
+  m_MTRendering: 1
+  mipStripping: 0
+  numberOfMipsStripped: 0
+  m_StackTraceTypes: 010000000100000001000000010000000100000001000000
+  iosShowActivityIndicatorOnLoading: -1
+  androidShowActivityIndicatorOnLoading: -1
+  m_iosAppInBackgroundBehavior: 0
+  m_AndroidFilterTouchesWhenObscured: 0
+  m_AndroidEnableSustainedPerformanceMode: 0
+  m_DefaultIsNativeResolution: 1
+  m_MacRetinaSupport: 1
+  m_RunInBackground: 1
+  m_CaptureSingleScreen: 0
+  m_MuteOtherAudioSources: 0
+  m_PrepareIOSForRecording: 0
+  m_ForceIOSSpeakersWhenRecording: 0
+  m_UIRequiresPersistentWiFi: 0
+  m_RequiresAudioHardware: 1
+  m_Autorotation: 1
+  m_AllowedAutorotateToPortrait: 0
+  m_AllowedAutorotateToPortraitUpsideDown: 0
+  m_AllowedAutorotateToLandscapeRight: 1
+  m_AllowedAutorotateToLandscapeLeft: 1
+  m_UseOSAutorotation: 1
+  m_Use32BitDisplayBuffer: 1
+  m_PreserveFramebufferAlpha: 0
+  m_DisableDepthAndStencilBuffers: 0
+  m_AndroidStartInFullscreen: 1
+  m_AndroidRenderOutsideSafeArea: 1
+  m_AndroidUseSwappy: 1
+  m_AndroidBlitType: 0
+  m_AndroidResizableWindow: 0
+  m_AndroidDefaultWindowWidth: 1920
+  m_AndroidDefaultWindowHeight: 1080
+  m_AndroidMinimumWindowWidth: 400
+  m_AndroidMinimumWindowHeight: 300
+  m_AndroidFullscreenMode: 1
+  m_defaultIsFullScreen: 1
+  m_defaultIsNativeResolution: 1
+  m_MacFullscreenMode: 2
+  m_D3D9FullscreenMode: 1
+  m_D3D11FullscreenMode: 1
+  m_VisibleInBackground: 1
+  m_AllowFullscreenSwitch: 1
+  m_FullscreenMode: 1
+  m_xboxSpeechDB: 0
+  m_xboxEnableHeadOrientation: 0
+  m_xboxEnableGuest: 0
+  m_xboxEnablePIXSampling: 0
+  m_MetroRealScreenOrientation: 4
+  m_n3DSHorizontalGame: 0
+  m_n3DSGameOrigin: 0
+  m_tvOSRequireExtendedGameController: 0
+  m_mobileMTRendering: 1
+  m_gcIncremental: 1
+  m_scriptingRuntimeVersion: 1
+  m_ManagedStrippingLevel:
+    Standalone: 0
+    Android: 1
+  m_scriptingBackend:
+    Android: 1
+    Standalone: 0
+  m_il2cppCompilerConfiguration:
+    Android: 1
+    Standalone: 0
+  m_ApiCompatibilityLevel:
+    Android: 6
+    Standalone: 6
+  serializedVersion: 23
+  bundleVersion: 0.1.0
+  preloadedAssets: []
+  m_VRSettings:
+    cardboard:
+      depthFormat: 0
+      enableTransitionView: 0
+    daydream:
+      depthFormat: 0
+      useSustainedPerformanceMode: 0
+      enableVideoLayer: 0
+      useProtectedVideoMemory: 0
+      minimumSupportedHeadTracking: 0
+      maximumSupportedHeadTracking: 1
+    hololens:
+      depthFormat: 1
+      depthBufferSharingEnabled: 1
+    oculus:
+      sharedDepthBuffer: 1
+      dashSupport: 1
+  openGLRequireES31: 0
+  openGLRequireES31AEP: 0
+  openGLRequireES32: 0
+  m_TemplateCustomTags: {}
+  mobileMTRendering: 1
+  m_UseMacAppStoreValidation: 0
+  m_NewWebPlayerLocationTrust: 1
+  m_ScreenOrientation: 3
+  m_TargetDevice: 2
+  m_UseOnDemandResources: 0
+  m_AccelerometerFrequency: 60
+  m_CameraUsageDescription:
+  m_LocationUsageDescription:
+  m_MicrophoneUsageDescription:
+  m_BluetoothUsageDescription:
+  m_NeedSubmitForIgfxCertification: 1
+  m_EnableInternalProfiler: 0
+  m_ActionOnDotNetUnhandledException: 1
+  m_LogObjCUncaughtExceptions: 1
+  m_EnableCrashReportAPI: 0
+  m_XcodeVersion: 1
+  m_AndroidBundleVersionCode: 1
+  m_AndroidMinSdkVersion: 23
+  m_AndroidTargetSdkVersion: 33
+  m_AndroidMaxAspectRatio: 2.1
+  m_AndroidSplashScreenScale: 0
+  m_AndroidKeystorePass:
+  m_AndroidKeyaliasName:
+  m_AndroidKeyaliasPass:
+  m_AndroidBuildApkPerCpuArchitecture: 0
+  m_AndroidTVCompatibility: 0
+  m_AndroidIsGame: 1
+  m_AndroidEnableGamepadSupport: 1
+  m_AndroidEnableBanner: 0
+  m_AndroidUseLowAccuracyLocation: 0
+  m_AndroidUseCustomKeystore: 0
+  m_AndroidPackageName: com.yourstudio.battlegroundx
+  m_AndroidApplicationEntry:
+  - Application
+  m_AndroidRenderingAPI:
+  - 1
+  m_AndroidCpuFilters:
+  - 0
+  - 1
+  m_AndroidInstalledLocation: 0
+  m_AndroidInternetAccess: 1
+  m_AndroidCreateSymbols: 0
+  m_AndroidSymbolsLocation:
+  m_AndroidWritePermission: 0
+  m_AndroidEnableWrite: 0
+  m_AndroidLicensePublicKey:
+  m_AndroidMaxAspectRatioEnabled: 0
+  m_AndroidEnableGPUInstancing: 1
+  StandaloneUniversalWindowsPlatform:
+  m_WsaTransparentSwapchain: 0
+  m_HolographicPauseOnTrackingLoss: 1
+  m_XboxOneProductId:
+  m_XboxOneUpdateKey:
+  m_XboxOneSandboxId:
+  m_XboxOneContentId:
+  m_XboxOneTitleId:
+  m_XboxOneSCId:
+  m_XboxOneGameOsOverridePath:
+  m_XboxOnePackagingOverridePath:
+  m_XboxOneAppManifestOverridePath:
+  m_XboxOneVersion: 1.0.0.0
+  m_XboxOnePackageEncryption: 0
+  m_XboxOnePackageUpdateGranularity: 2
+  m_XboxOneDescription:
+  m_XboxOnelanguage: []
+  m_XboxOneCapability: []
+  m_XboxOneGameRating: {}
+  m_XboxOneIsContentPackage: 0
+  m_XboxOneEnhancedXboxCompatibilityMode: 0
+  m_XboxOneEnableGPUVariability: 1
+  m_XboxOneSockets: {}
+  m_XboxOneSplashScreen: {fileID: 0}
+  m_XboxOneAllowedProductIds: []
+  m_XboxOnePersistentLocalStorageSize: 0
+  m_XboxOneXTitleMemoryAllocation: 0
+  m_XboxOneOverrideIdentityName:
+  m_xboxOneOverrideIdentityPublisher:
+  targetGlesGraphics: 1
+  m_activeInputHandler: 0
+  m_CocoaTouchForceHardKeyboard: 0
+  m_PlatformDaydreamIcon: {fileID: 0}
+  m_PlatformDaydreamBanner: {fileID: 0}
+  m_HandheldNotchConfig: {fileID: 0}
+  m_SupportedAspectRatios:
+    4:3: 1
+    5:4: 1
+    16:10: 1
+    16:9: 1
+    Others: 1
+  productName: Battleground X
+  companyName: YourStudio
+  m_CursorHotspot: {x: 0, y: 0}
+  m_DefaultScreenOrientation: 3
+  m_ResolutionDialogBanner: {fileID: 0}
+  m_iPhoneSplashScreen: {fileID: 0}
+  m_iPhoneHighResSplashScreen: {fileID: 0}
+  m_iPhoneTallHighResSplashScreen: {fileID: 0}
+  m_iPhone47inHighResSplashScreen: {fileID: 0}
+  m_iPhone55inPortraitSplashScreen: {fileID: 0}
+  m_iPhone55inLandscapeSplashScreen: {fileID: 0}
+  m_iPhone58inPortraitSplashScreen: {fileID: 0}
+  m_iPhone58inLandscapeSplashScreen: {fileID: 0}
+  m_iPadPortraitSplashScreen: {fileID: 0}
+  m_iPadHighResPortraitSplashScreen: {fileID: 0}
+  m_iPadLandscapeSplashScreen: {fileID: 0}
+  m_iPadHighResLandscapeSplashScreen: {fileID: 0}
+  m_iPhone65inPortraitSplashScreen: {fileID: 0}
+  m_iPhone65inLandscapeSplashScreen: {fileID: 0}
+  m_iPhone61inPortraitSplashScreen: {fileID: 0}
+  m_iPhone61inLandscapeSplashScreen: {fileID: 0}
+  m_tvOSSplashScreen: {fileID: 0}
+  m_virtualRealitySplashScreen: {fileID: 0}
+  m_HolographicTrackingLossScreen: {fileID: 0}
+  defaultScreenWidth: 1920
+  defaultScreenHeight: 1080
+  m_StereoRenderingPath: 0
+  m_ActiveColorSpace: 1

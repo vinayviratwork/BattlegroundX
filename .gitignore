@@ -1,0 +1,84 @@
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+[Uu]ser[Ss]ettings/
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# macOS
+.DS_Store
+*.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# JetBrains Rider
+.idea/
+
+# Unity Cloud Build
+UnityCloudBuildManifest.json.meta
+
+# Crashlytics
+crashlytics-build.properties
+
+# Android
+*.apk
+*.aab
+*.keystore
+
+# iOS / macOS
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Node (if any tooling)
+node_modules/
+
+# Env / secrets — NEVER commit these
+*.env
+.env
+secrets.json
+unity_credentials.json
+serviceAccountKey.json
+
+# Build output
+/[Bb]uild/
+/[Bb]uilds/
+*.exe
+*.app
+
+# Package Manager cache
+/[Pp]ackages/[Ii]d/
+
+# Asset Store Tools plugin
+/[Aa]ssets/[Aa]sset[Ss]tore*/
+
+# TextMesh Pro (keep source, ignore generated)
+/[Aa]ssets/TextMesh Pro/Examples*/
+
+# Scene backup
+*.unity.backup
