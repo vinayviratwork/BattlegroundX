@@ -42,7 +42,7 @@
 ╚═══════════════════════════════════════════════════════════╝
 ```
 
-📖 Full zone guide → [Docs/MAP_GUIDE.md](Docs/MAP_GUIDE.md)
+📖 Full zone guide → [docs/MAP_GUIDE.md](docs/MAP_GUIDE.md)
 
 ---
 
@@ -89,13 +89,13 @@ CLIENT                          UNITY RELAY (Cloud)              HOST
   └── VFX + Audio on all clients        │                          │
 ```
 
-📖 Full architecture doc → [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md)
+📖 Full architecture doc → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ---
 
 ## Screenshots
 
-> **To add screenshots:** Open Unity → `Tools → Battleground X → Generate Full Scene` → Press Play → take screenshots → add to `Docs/Screenshots/` folder
+> **To add screenshots:** Open Unity → `Tools → Battleground X → Generate Full Scene` → Press Play → take screenshots → add to `docs/Screenshots/` folder
 
 | Gameplay | Minimap | Settings |
 |---|---|---|
@@ -238,7 +238,7 @@ BattlegroundX_Project/
 │       ├── UI/             ← HUD, Minimap, Settings, Ping, NameTag, Mobile
 │       ├── VFX/            ← VFXManager, MuzzleFlash, HitEffect, BloodEffect
 │       └── World/          ← MatchManager, SafeZone, Spawner, Loot
-├── Docs/
+├── docs/
 │   ├── ARCHITECTURE.md     ← Technical deep-dive
 │   ├── MAP_GUIDE.md        ← Zone guide + strategy
 │   ├── PROJECT_STATUS.md   ← Completion status
@@ -261,7 +261,7 @@ BattlegroundX_Project/
 | Phase 3 — Beta | 🔲 Planned | Textures, LODs, 10-player load test |
 | Phase 4 — Release | 🔲 Planned | Dedicated servers, anti-cheat, store release |
 
-📖 Full roadmap → [Docs/DEVELOPMENT_ROADMAP.md](Docs/DEVELOPMENT_ROADMAP.md)
+📖 Full roadmap → [docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md)
 
 ---
 
