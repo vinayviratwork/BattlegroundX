@@ -1,12 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
 public enum LootAmmoType { Rifle, Pistol, Shotgun, Sniper }
 
-/// <summary>
-/// Per-player inventory: ammo counts + healing items. Server-authoritative writes.
-/// </summary>
 public class PlayerInventory : NetworkBehaviour
 {
     [Header("Max reserves")]
@@ -16,24 +13,24 @@ public class PlayerInventory : NetworkBehaviour
     [SerializeField] private int maxSniperAmmo  = 20;
     [SerializeField] private int maxMedkits     = 5;
 
-    // ── Networked ─────────────────────────────────────────────────────────
+    
     public NetworkVariable<int> RifleAmmo   = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> PistolAmmo  = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> ShotgunAmmo = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> SniperAmmo  = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> Medkits     = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     public override void OnNetworkSpawn()
     {
         if (IsServer)
         {
-            // Start with minimal ammo for first weapon
+            
             RifleAmmo.Value = 60;
         }
     }
 
-    // ── Server-side mutations ─────────────────────────────────────────────
+    
     public void AddAmmoOnServer(LootAmmoType type, int amount)
     {
         if (!IsServer || amount <= 0) return;
@@ -52,7 +49,7 @@ public class PlayerInventory : NetworkBehaviour
         Medkits.Value = Mathf.Min(maxMedkits, Medkits.Value + amount);
     }
 
-    // ── Owner-side read + consume (called from NetworkWeapon) ─────────────
+    
     public int GetAmmo(LootAmmoType type)
     {
         return type switch
@@ -65,12 +62,12 @@ public class PlayerInventory : NetworkBehaviour
         };
     }
 
-    // Owner requests server to consume ammo before reload finalises
+    
     public int ConsumeAmmo(LootAmmoType type, int amount)
     {
         if (!IsOwner) return 0;
         ConsumeAmmoServerRpc(type, amount);
-        // Optimistic: return requested; server corrects if wrong
+        
         return Mathf.Min(GetAmmo(type), amount);
     }
 
@@ -88,7 +85,7 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
-    // Owner requests medkit use
+    
     public void UseMedkit()
     {
         if (!IsOwner || Medkits.Value <= 0) return;

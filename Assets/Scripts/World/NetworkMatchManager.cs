@@ -1,14 +1,10 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
 public enum MatchPhase { Lobby, Countdown, InProgress, Ended }
 
-/// <summary>
-/// Authoritative match state machine: lobby → countdown → in-progress → ended.
-/// Tracks alive players, elimination order, winner, and triggers return-to-lobby.
-/// </summary>
 public class NetworkMatchManager : NetworkBehaviour
 {
     public static NetworkMatchManager Instance { get; private set; }
@@ -20,7 +16,7 @@ public class NetworkMatchManager : NetworkBehaviour
     [SerializeField] private float returnToLobbyDelay = 10f;
     [SerializeField] private int   minPlayersToStart  = 2;
 
-    // ── Networked ─────────────────────────────────────────────────────────
+    
     public NetworkVariable<MatchPhase> Phase = new(MatchPhase.Lobby,
         NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<float> TimeRemaining = new(900f,
@@ -32,11 +28,11 @@ public class NetworkMatchManager : NetworkBehaviour
     public NetworkVariable<bool>  MatchEnded = new(false,
         NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    // ── Private ───────────────────────────────────────────────────────────
+    
     private readonly List<ulong> _eliminationOrder = new();
     private int _placementCounter = 0;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
@@ -67,7 +63,7 @@ public class NetworkMatchManager : NetworkBehaviour
         }
     }
 
-    // ── Lobby loop ────────────────────────────────────────────────────────
+    
     private IEnumerator LobbyLoop()
     {
         float waited = 0f;
@@ -110,7 +106,7 @@ public class NetworkMatchManager : NetworkBehaviour
         UpdateAliveCount();
     }
 
-    // ── In-progress update ────────────────────────────────────────────────
+    
     private void Update()
     {
         if (!IsServer || Phase.Value != MatchPhase.InProgress) return;
@@ -145,7 +141,7 @@ public class NetworkMatchManager : NetworkBehaviour
         return ulong.MaxValue;
     }
 
-    // ── Elimination ───────────────────────────────────────────────────────
+    
     public void RegisterEliminationOnServer(ulong eliminatedId, ulong killerId)
     {
         if (!IsServer) return;
@@ -154,7 +150,7 @@ public class NetworkMatchManager : NetworkBehaviour
         _eliminationOrder.Add(eliminatedId);
         int place = _placementCounter--;
 
-        // Assign placement stat
+        
         if (NetworkManager.Singleton.ConnectedClients.TryGetValue(eliminatedId, out var client))
             client.PlayerObject?.GetComponent<PlayerStats>()?.SetPlacementOnServer(place);
 
@@ -168,7 +164,7 @@ public class NetworkMatchManager : NetworkBehaviour
         NetworkHUD.Instance?.ShowElimination(eliminatedId, killerId, placement);
     }
 
-    // ── End match ─────────────────────────────────────────────────────────
+    
     private void EndMatch(ulong winnerId)
     {
         if (MatchEnded.Value) return;
@@ -177,7 +173,7 @@ public class NetworkMatchManager : NetworkBehaviour
         MatchEnded.Value     = true;
         Phase.Value          = MatchPhase.Ended;
 
-        // Assign winner placement
+        
         if (winnerId != ulong.MaxValue &&
             NetworkManager.Singleton.ConnectedClients.TryGetValue(winnerId, out var winner))
             winner.PlayerObject?.GetComponent<PlayerStats>()?.SetPlacementOnServer(1);
@@ -195,7 +191,7 @@ public class NetworkMatchManager : NetworkBehaviour
         _eliminationOrder.Clear();
         _placementCounter = 0;
 
-        // Respawn all players
+        
         foreach (var c in NetworkManager.Singleton.ConnectedClientsList)
         {
             var hp = c.PlayerObject?.GetComponent<NetworkHealth>();
@@ -213,7 +209,7 @@ public class NetworkMatchManager : NetworkBehaviour
         NetworkHUD.Instance?.ShowLobbyScreen();
     }
 
-    // ── Disconnect ────────────────────────────────────────────────────────
+    
     private void OnClientConnected(ulong id)    => UpdateAliveCount();
     private void OnClientDisconnect(ulong id)   => UpdateAliveCount();
 }

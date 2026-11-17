@@ -1,9 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-/// <summary>
-/// Central audio manager. Assign AudioClips in the Inspector.
-/// Falls back gracefully when clips are not assigned.
-/// </summary>
 public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
@@ -24,7 +20,7 @@ public class AudioManager : MonoBehaviour
     private AudioSource _src;
     private AudioSource _loopSrc;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
@@ -36,7 +32,7 @@ public class AudioManager : MonoBehaviour
         _loopSrc.loop = true;
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
+    
     public void PlayShot()         => Play(shotClip,         sfxVolume);
     public void PlayReload()       => Play(reloadClip,       sfxVolume);
     public void PlayHit()          => Play(hitClip,          sfxVolume);

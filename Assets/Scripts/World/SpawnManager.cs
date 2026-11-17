@@ -1,11 +1,7 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Manages player spawn points. Server picks a unique point per player,
-/// ensures no two players spawn within minSpawnSeparation of each other.
-/// </summary>
 public class SpawnManager : NetworkBehaviour
 {
     public static SpawnManager Instance { get; private set; }
@@ -36,7 +32,7 @@ public class SpawnManager : NetworkBehaviour
 
     private void OnClientConnected(ulong clientId)
     {
-        // NetworkManager handles player prefab spawn; we teleport after a frame
+        
         StartCoroutine(TeleportNextFrame(clientId));
     }
 
@@ -64,7 +60,7 @@ public class SpawnManager : NetworkBehaviour
         if (spawnPoints == null || spawnPoints.Length == 0)
             return Vector3.zero;
 
-        // Try non-overlapping points first
+        
         List<int> candidates = new();
         for (int i = 0; i < spawnPoints.Length; i++)
         {

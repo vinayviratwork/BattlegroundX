@@ -1,23 +1,12 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Central VFX manager — pooled particle effects for muzzle flash, hit sparks,
-/// blood splatter, and explosion.  Works fully without assets: falls back to
-/// programmatic particle systems when no prefab is assigned.
-///
-/// Usage:
-///   VFXManager.Instance.PlayMuzzleFlash(position, rotation);
-///   VFXManager.Instance.PlayHitEffect(position, normal);
-///   VFXManager.Instance.PlayBloodEffect(position, normal);
-///   VFXManager.Instance.PlayExplosion(position);
-/// </summary>
 public class VFXManager : MonoBehaviour
 {
     public static VFXManager Instance { get; private set; }
 
-    // ── Inspector — optional prefab overrides ─────────────────────────────
+    
     [Header("Prefabs (optional — procedural fallback if unassigned)")]
     [SerializeField] private ParticleSystem muzzleFlashPrefab;
     [SerializeField] private ParticleSystem hitSparkPrefab;
@@ -30,20 +19,20 @@ public class VFXManager : MonoBehaviour
     [SerializeField] private int bloodPoolSize     = 16;
     [SerializeField] private int explosionPoolSize = 4;
 
-    // ── Pools ─────────────────────────────────────────────────────────────
+    
     private Queue<ParticleSystem> _muzzlePool    = new();
     private Queue<ParticleSystem> _hitPool       = new();
     private Queue<ParticleSystem> _bloodPool     = new();
     private Queue<ParticleSystem> _explosionPool = new();
 
-    // ── Screen flash (UI) ─────────────────────────────────────────────────
+    
     [Header("Screen flash")]
     [SerializeField] private UnityEngine.UI.Image screenFlashImage;
     [SerializeField] private float                screenFlashDuration = 0.1f;
     [SerializeField] private Color                damageFlashColor    = new Color(1f, 0f, 0f, 0.35f);
     [SerializeField] private Color                healFlashColor      = new Color(0f, 1f, 0f, 0.25f);
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
@@ -55,7 +44,7 @@ public class VFXManager : MonoBehaviour
         BuildPool(ref _explosionPool, explosionPrefab,    explosionPoolSize, CreateExplosionSystem);
     }
 
-    // ── Pool construction ─────────────────────────────────────────────────
+    
     private void BuildPool(ref Queue<ParticleSystem> pool, ParticleSystem prefab,
                            int size, System.Func<ParticleSystem> factory)
     {
@@ -69,7 +58,7 @@ public class VFXManager : MonoBehaviour
         }
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
+    
     public void PlayMuzzleFlash(Vector3 position, Quaternion rotation)
         => Play(_muzzlePool, position, rotation, 0.15f);
 
@@ -85,7 +74,7 @@ public class VFXManager : MonoBehaviour
     public void FlashDamage()  => StartCoroutine(DoScreenFlash(damageFlashColor));
     public void FlashHeal()    => StartCoroutine(DoScreenFlash(healFlashColor));
 
-    // ── Internal play ─────────────────────────────────────────────────────
+    
     private void Play(Queue<ParticleSystem> pool, Vector3 pos, Quaternion rot, float returnDelay)
     {
         if (pool.Count == 0) return;
@@ -105,7 +94,7 @@ public class VFXManager : MonoBehaviour
         pool.Enqueue(ps);
     }
 
-    // ── Screen flash coroutine ────────────────────────────────────────────
+    
     private IEnumerator DoScreenFlash(Color color)
     {
         if (screenFlashImage == null) yield break;
@@ -115,7 +104,7 @@ public class VFXManager : MonoBehaviour
         screenFlashImage.gameObject.SetActive(false);
     }
 
-    // ── Procedural particle factories ─────────────────────────────────────
+    
 
     private ParticleSystem CreateMuzzleSystem()
     {

@@ -1,7 +1,6 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>Fire button: fires continuously while held (auto) or once per tap (semi).</summary>
 public class FireButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
     private NetworkPlayerController _player;

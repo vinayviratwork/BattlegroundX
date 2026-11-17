@@ -1,31 +1,24 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>
-/// Full mobile input system:
-///   - Virtual joystick (move)
-///   - Swipe pad (look)
-///   - Fire, Reload, Weapon Switch, Jump, Crouch, Aim, Medkit buttons
-/// Wire each UI element in the Inspector or via the scene generator.
-/// </summary>
 public class MobileInputManager : MonoBehaviour,
     IPointerDownHandler, IPointerUpHandler, IDragHandler
 {
     public static MobileInputManager Instance { get; private set; }
 
-    // ── Joystick ──────────────────────────────────────────────────────────
+    
     [Header("Joystick")]
     [SerializeField] private RectTransform joystickBase;
     [SerializeField] private RectTransform joystickKnob;
     [SerializeField] private float         joystickRadius = 60f;
 
-    // ── Look pad ──────────────────────────────────────────────────────────
+    
     [Header("Look Pad")]
     [SerializeField] private RectTransform lookPadRect;
     [SerializeField] private float         lookSensitivity = 0.15f;
 
-    // ── Buttons ───────────────────────────────────────────────────────────
+    
     [Header("Buttons")]
     [SerializeField] private Button fireButton;
     [SerializeField] private Button reloadButton;
@@ -36,13 +29,13 @@ public class MobileInputManager : MonoBehaviour,
     [SerializeField] private Button weaponNextButton;
     [SerializeField] private Button weaponPrevButton;
 
-    // ── Private ───────────────────────────────────────────────────────────
+    
     private NetworkPlayerController _player;
     private int    _joystickTouchId = -1;
     private int    _lookTouchId     = -1;
     private Vector2 _lastLookPos;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
@@ -57,7 +50,7 @@ public class MobileInputManager : MonoBehaviour,
 
     private void Update()
     {
-        // Find local player lazily
+        
         if (_player == null)
         {
             foreach (var p in FindObjectsOfType<NetworkPlayerController>())
@@ -67,7 +60,7 @@ public class MobileInputManager : MonoBehaviour,
         HandleTouchLook();
     }
 
-    // ── Button wiring ─────────────────────────────────────────────────────
+    
     private void WireButtons()
     {
         if (fireButton   != null) fireButton.onClick.AddListener(OnFirePressed);
@@ -78,10 +71,10 @@ public class MobileInputManager : MonoBehaviour,
         if (weaponNextButton != null) weaponNextButton.onClick.AddListener(() => _player?.GetComponent<NetworkWeapon>()?.SwitchWeapon(1));
         if (weaponPrevButton != null) weaponPrevButton.onClick.AddListener(() => _player?.GetComponent<NetworkWeapon>()?.SwitchWeapon(-1));
 
-        // Aim hold — use EventTrigger or PointerDownHandler on the aimButton parent
+        
     }
 
-    // ── Joystick touch ────────────────────────────────────────────────────
+    
     public void OnPointerDown(PointerEventData e)
     {
         if (joystickBase == null) return;
@@ -143,10 +136,10 @@ public class MobileInputManager : MonoBehaviour,
         _player?.SetMobileMove(Vector2.zero);
     }
 
-    // ── Look pad ──────────────────────────────────────────────────────────
+    
     private void HandleTouchLook()
     {
-        // Handled via OnDrag; kept here for multi-touch fallback if needed
+        
     }
 
     private void UpdateLook(Vector2 screenPos)
@@ -156,7 +149,7 @@ public class MobileInputManager : MonoBehaviour,
         _player?.SetMobileLookDelta(delta);
     }
 
-    // ── Button callbacks ──────────────────────────────────────────────────
+    
     private void OnFirePressed()   => _player?.FireMobile();
     private void OnReloadPressed() => _player?.GetComponent<NetworkWeapon>()?.TryReload();
     private void OnJumpPressed()   => _player?.MobileJump();

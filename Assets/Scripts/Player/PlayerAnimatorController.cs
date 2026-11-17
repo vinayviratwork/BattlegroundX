@@ -1,44 +1,27 @@
-using Unity.Netcode;
+﻿using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Drives the Animator on the NetworkPlayer based on networked state from
-/// NetworkPlayerController and NetworkWeapon.  Works for both the local owner
-/// and remote clients (reads NetworkVariables so no extra RPC needed).
-///
-/// Animator parameter contract (create these in the Animator window):
-///   Float  "Speed"       — 0 (idle) → 1 (walk) → 2 (run) → 3 (sprint)
-///   Bool   "IsCrouching" — crouched state
-///   Bool   "IsAiming"    — ADS state
-///   Bool   "IsGrounded"  — ground contact
-///   Bool   "IsDead"      — death state
-///   Trigger "Fire"       — one-shot fire animation
-///   Trigger "Reload"     — one-shot reload animation
-///   Trigger "Jump"       — jump launch animation
-///   Trigger "TakeDamage" — hit reaction
-///   Int    "WeaponIndex" — 0 rifle / 1 shotgun / 2 sniper
-/// </summary>
 [RequireComponent(typeof(Animator))]
 public class PlayerAnimatorController : NetworkBehaviour
 {
-    // ── Inspector ─────────────────────────────────────────────────────────
+    
     [Header("Smoothing")]
     [SerializeField] private float speedDampTime  = 0.1f;
     [SerializeField] private float leanDampTime   = 0.05f;
 
     [Header("IK — optional")]
     [SerializeField] private bool  enableHandIK   = true;
-    [SerializeField] private Transform leftHandTarget;   // set in Inspector per weapon
+    [SerializeField] private Transform leftHandTarget;   
     [SerializeField] private Transform rightHandTarget;
 
-    // ── Cached refs ───────────────────────────────────────────────────────
+    
     private Animator                 _anim;
     private NetworkPlayerController  _ctrl;
     private NetworkWeapon            _weapon;
     private NetworkHealth            _health;
     private CharacterController      _cc;
 
-    // ── Animator parameter IDs (hashed for performance) ───────────────────
+    
     private static readonly int PSpeed       = Animator.StringToHash("Speed");
     private static readonly int PCrouching   = Animator.StringToHash("IsCrouching");
     private static readonly int PAiming      = Animator.StringToHash("IsAiming");
@@ -50,13 +33,13 @@ public class PlayerAnimatorController : NetworkBehaviour
     private static readonly int PTakeDamage  = Animator.StringToHash("TakeDamage");
     private static readonly int PWeaponIndex = Animator.StringToHash("WeaponIndex");
 
-    // ── State tracking ────────────────────────────────────────────────────
+    
     private bool  _wasReloading;
     private bool  _wasGrounded = true;
     private int   _lastWeaponIndex = -1;
     private int   _lastHealth = 100;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     public override void OnNetworkSpawn()
     {
         _anim   = GetComponent<Animator>();
@@ -75,7 +58,7 @@ public class PlayerAnimatorController : NetworkBehaviour
             _health.OnHealthChanged -= OnHealthChanged;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Update()
     {
         if (_anim == null) return;
@@ -85,19 +68,19 @@ public class PlayerAnimatorController : NetworkBehaviour
         DriveDeath();
     }
 
-    // ── Locomotion ────────────────────────────────────────────────────────
+    
     private void DriveLocomotion()
     {
         bool crouching = _ctrl != null && _ctrl.IsCrouching.Value;
         bool aiming    = _ctrl != null && _ctrl.IsAiming.Value;
         bool running   = _ctrl != null && _ctrl.IsRunning.Value;
 
-        // Determine speed tier: 0=idle, 1=walk, 2=run, 3=sprint
+        
         float targetSpeed = 0f;
         if (_ctrl != null)
         {
-            // For owner: check actual CharacterController velocity
-            // For remotes: use IsRunning NetworkVariable as proxy
+            
+            
             if (IsOwner && _cc != null)
             {
                 float hVel = new Vector3(_cc.velocity.x, 0, _cc.velocity.z).magnitude;
@@ -111,25 +94,25 @@ public class PlayerAnimatorController : NetworkBehaviour
             }
         }
 
-        if (crouching && targetSpeed > 0f) targetSpeed = 1f; // cap at walk when crouched
+        if (crouching && targetSpeed > 0f) targetSpeed = 1f; 
 
         _anim.SetFloat(PSpeed,     targetSpeed, speedDampTime, Time.deltaTime);
         _anim.SetBool(PCrouching,  crouching);
         _anim.SetBool(PAiming,     aiming);
 
-        // Grounded
+        
         bool grounded = IsOwner
             ? (_cc == null || _cc.isGrounded)
-            : true; // remotes default grounded (no CC access)
+            : true; 
         _anim.SetBool(PGrounded, grounded);
 
-        // Jump trigger
+        
         if (!grounded && _wasGrounded)
             _anim.SetTrigger(PJump);
         _wasGrounded = grounded;
     }
 
-    // ── Weapon ────────────────────────────────────────────────────────────
+    
     private void DriveWeaponState()
     {
         if (_weapon == null) return;
@@ -137,40 +120,40 @@ public class PlayerAnimatorController : NetworkBehaviour
         int weaponIdx  = _weapon.CurrentWeaponIndex.Value;
         bool reloading = _weapon.IsReloading.Value;
 
-        // Weapon switch
+        
         if (weaponIdx != _lastWeaponIndex)
         {
             _anim.SetInteger(PWeaponIndex, weaponIdx);
             _lastWeaponIndex = weaponIdx;
         }
 
-        // Reload trigger (rising edge)
+        
         if (reloading && !_wasReloading)
             _anim.SetTrigger(PReload);
         _wasReloading = reloading;
     }
 
-    // ── Death ─────────────────────────────────────────────────────────────
+    
     private void DriveDeath()
     {
         bool dead = _health != null && _health.IsDead.Value;
         _anim.SetBool(PDead, dead);
     }
 
-    // ── Health change callback ─────────────────────────────────────────────
+    
     private void OnHealthChanged(int oldHp, int newHp)
     {
         if (newHp < oldHp && newHp > 0)
             _anim.SetTrigger(PTakeDamage);
     }
 
-    // ── Public API: called by NetworkWeapon.TryFire on the owner ─────────
+    
     public void TriggerFireAnimation()
     {
         if (_anim != null) _anim.SetTrigger(PFire);
     }
 
-    // ── IK ────────────────────────────────────────────────────────────────
+    
     private void OnAnimatorIK(int layerIndex)
     {
         if (!enableHandIK || _anim == null) return;

@@ -1,14 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Multi-phase shrinking safe zone. Server-authoritative radius synced to all clients.
-/// Deals escalating damage to players outside the zone each tick.
-/// </summary>
 public class NetworkSafeZone : NetworkBehaviour
 {
-    // ── Phase definition ──────────────────────────────────────────────────
+    
     [System.Serializable]
     private class ZonePhase
     {
@@ -38,13 +34,13 @@ public class NetworkSafeZone : NetworkBehaviour
     [Header("Visual")]
     [SerializeField] private Transform visualRing;
 
-    // ── Networked ─────────────────────────────────────────────────────────
+    
     public NetworkVariable<float> CurrentRadius = new(180f,
         NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int>   CurrentPhaseIndex = new(0,
         NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    // ── Private ───────────────────────────────────────────────────────────
+    
     private float _phaseTimer;
     private float _damageTimer;
     private float _fromRadius;
@@ -68,7 +64,7 @@ public class NetworkSafeZone : NetworkBehaviour
         UpdateVisual();
     }
 
-    // ── Server-side logic ─────────────────────────────────────────────────
+    
     private void ServerUpdate()
     {
         if (NetworkMatchManager.Instance == null ||
@@ -82,7 +78,7 @@ public class NetworkSafeZone : NetworkBehaviour
 
         if (!_shrinking)
         {
-            // Hold period
+            
             if (_phaseTimer >= phase.holdTime)
             {
                 _phaseTimer = 0f;
@@ -92,7 +88,7 @@ public class NetworkSafeZone : NetworkBehaviour
         }
         else
         {
-            // Shrink period
+            
             float t = Mathf.Clamp01(_phaseTimer / Mathf.Max(1f, phase.shrinkTime));
             CurrentRadius.Value = Mathf.Lerp(_fromRadius, phase.targetRadius, t);
 
@@ -105,7 +101,7 @@ public class NetworkSafeZone : NetworkBehaviour
             }
         }
 
-        // Damage tick
+        
         _damageTimer += Time.deltaTime;
         float tick = phase.tickInterval > 0f ? phase.tickInterval : 1f;
         if (_damageTimer >= tick)
@@ -130,7 +126,7 @@ public class NetworkSafeZone : NetworkBehaviour
         }
     }
 
-    // ── Visual (all clients) ──────────────────────────────────────────────
+    
     private void UpdateVisual()
     {
         if (visualRing == null) return;
@@ -139,7 +135,7 @@ public class NetworkSafeZone : NetworkBehaviour
         visualRing.localScale  = new Vector3(d, 0.05f, d);
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
+    
     public bool IsInsideZone(Vector3 worldPos)
     {
         float dist = Vector2.Distance(
@@ -149,5 +145,5 @@ public class NetworkSafeZone : NetworkBehaviour
     }
 
     public Vector3 ZoneCenter    => zoneCenter;
-    public Vector3 CurrentCenter => zoneCenter;   // alias used by MinimapSafeZoneRing
+    public Vector3 CurrentCenter => zoneCenter;   
 }

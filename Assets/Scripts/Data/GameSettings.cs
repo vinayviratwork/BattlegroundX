@@ -1,9 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-/// <summary>
-/// ScriptableObject holding all tunable game constants.
-/// Create via Assets → Create → Battleground X → Game Settings.
-/// </summary>
 [CreateAssetMenu(fileName = "GameSettings", menuName = "Battleground X/Game Settings")]
 public class GameSettings : ScriptableObject
 {

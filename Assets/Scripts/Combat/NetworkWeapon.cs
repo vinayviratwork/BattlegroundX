@@ -1,16 +1,15 @@
-using System;
+﻿using System;
 using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
-// ── Weapon definition ─────────────────────────────────────────────────────────
 [Serializable]
 public class WeaponDefinition
 {
     public string name           = "Assault Rifle";
     public int    damage         = 25;
     public int    magazineSize   = 30;
-    public float  fireRate       = 0.1f;   // seconds between shots
+    public float  fireRate       = 0.1f;   
     public float  reloadTime     = 2.5f;
     public float  range          = 150f;
     public float  recoilAmount   = 2f;
@@ -18,7 +17,6 @@ public class WeaponDefinition
     public LootAmmoType ammoType = LootAmmoType.Rifle;
 }
 
-// ── Networked weapon ───────────────────────────────────────────────────────────
 public class NetworkWeapon : NetworkBehaviour
 {
     [Header("Weapon Slots")]
@@ -47,12 +45,12 @@ public class NetworkWeapon : NetworkBehaviour
     [Header("Raycast")]
     [SerializeField] private LayerMask hitMask = ~0;
 
-    // ── Networked state ───────────────────────────────────────────────────
+    
     public NetworkVariable<int>  CurrentWeaponIndex = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public NetworkVariable<int>  AmmoInMag          = new(30, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public NetworkVariable<bool> IsReloading        = new(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
-    // ── Private ───────────────────────────────────────────────────────────
+    
     private float _nextFireTime;
     private bool  _triggerHeld;
     private Camera _ownerCam;
@@ -60,7 +58,7 @@ public class NetworkWeapon : NetworkBehaviour
     private CameraShake _cameraShake;
     private AudioManager _audio;
 
-    // ── Init ──────────────────────────────────────────────────────────────
+    
     public override void OnNetworkSpawn()
     {
         _ownerCam    = GetComponentInChildren<Camera>(true);
@@ -75,20 +73,20 @@ public class NetworkWeapon : NetworkBehaviour
     private WeaponDefinition CurrentWeapon =>
         weapons[Mathf.Clamp(CurrentWeaponIndex.Value, 0, weapons.Length - 1)];
 
-    // ── Update (owner only) ───────────────────────────────────────────────
+    
     private void Update()
     {
         if (!IsOwner || !IsSpawned) return;
 
 #if !UNITY_ANDROID || UNITY_EDITOR
-        // Automatic fire
+        
         if (CurrentWeapon.isAutomatic && Input.GetMouseButton(0)) TryFire();
         else if (!CurrentWeapon.isAutomatic && Input.GetMouseButtonDown(0)) TryFire();
 
-        // Reload
+        
         if (Input.GetKeyDown(KeyCode.R)) TryReload();
 
-        // Weapon switch via scroll wheel or Q/E
+        
         float scroll = Input.GetAxisRaw("Mouse ScrollWheel");
         if (scroll > 0.01f) SwitchWeapon(1);
         if (scroll < -0.01f) SwitchWeapon(-1);
@@ -97,7 +95,7 @@ public class NetworkWeapon : NetworkBehaviour
 #endif
     }
 
-    // ── Fire ──────────────────────────────────────────────────────────────
+    
     public void TryFire()
     {
         if (!IsOwner || !IsSpawned) return;
@@ -120,7 +118,7 @@ public class NetworkWeapon : NetworkBehaviour
     private void FireServerRpc(Vector3 origin, Vector3 direction, ServerRpcParams rpcParams = default)
     {
         if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
-        // Validate direction magnitude
+        
         if (direction.sqrMagnitude < 0.5f || direction.sqrMagnitude > 1.5f) return;
 
         direction = direction.normalized;
@@ -139,11 +137,11 @@ public class NetworkWeapon : NetworkBehaviour
     [ClientRpc]
     private void FireHitFeedbackClientRpc(Vector3 point, Vector3 normal)
     {
-        // Visual hit feedback — spawn particles here if assets exist
+        
         Debug.DrawRay(point, normal * 0.3f, Color.red, 0.5f);
     }
 
-    // ── Reload ────────────────────────────────────────────────────────────
+    
     public void TryReload()
     {
         if (!IsOwner || !IsSpawned || IsReloading.Value) return;
@@ -177,7 +175,7 @@ public class NetworkWeapon : NetworkBehaviour
         IsReloading.Value = false;
     }
 
-    // ── Weapon switch ─────────────────────────────────────────────────────
+    
     public void SwitchWeapon(int direction)
     {
         if (!IsOwner || !IsSpawned || IsReloading.Value) return;
@@ -186,7 +184,7 @@ public class NetworkWeapon : NetworkBehaviour
         AmmoInMag.Value = Mathf.Min(AmmoInMag.Value, weapons[next].magazineSize);
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
+    
     public WeaponDefinition GetCurrentWeapon() => CurrentWeapon;
     public int              WeaponCount        => weapons.Length;
     public string           CurrentWeaponName  => CurrentWeapon.name;

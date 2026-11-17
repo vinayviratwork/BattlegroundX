@@ -1,9 +1,6 @@
-using Unity.Netcode;
+﻿using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Tracks kills, damage dealt, and survival time. Server-authoritative.
-/// </summary>
 public class PlayerStats : NetworkBehaviour
 {
     public NetworkVariable<int>   Kills        = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -32,7 +29,7 @@ public class PlayerStats : NetworkBehaviour
             SurvivalTime.Value = Time.time - _startTime;
     }
 
-    // Server-only mutations
+    
     public void AddKillOnServer()
     {
         if (!IsServer) return;

@@ -1,9 +1,6 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// Recoil and hit-feedback camera shake attached to the player camera pivot.
-/// </summary>
 public class CameraShake : MonoBehaviour
 {
     [SerializeField] private float defaultIntensity = 0.3f;

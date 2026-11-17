@@ -1,46 +1,33 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Manages the minimap: owns the overhead render-texture camera, keeps it
-/// above the local player, and displays the result in a RawImage on the HUD.
-///
-/// Setup (done automatically by the Scene Generator):
-///   1. A Camera component (MinimapCamera) is parented to this GameObject.
-///   2. A RenderTexture (256×256) is created and assigned to both the camera
-///      and the RawImage in the HUD.
-///   3. Each spawned NetworkPlayer receives a MinimapIcon component that
-///      registers itself here so the minimap dot moves with the player.
-///
-/// No manual setup needed if you use the Scene Generator.
-/// </summary>
 public class MinimapController : MonoBehaviour
 {
     public static MinimapController Instance { get; private set; }
 
-    // ── Inspector ─────────────────────────────────────────────────────────
+    
     [Header("Camera")]
     [SerializeField] private Camera   minimapCamera;
     [SerializeField] private float    cameraHeight    = 120f;
-    [SerializeField] private float    orthographicSize = 90f; // half the view in units
+    [SerializeField] private float    orthographicSize = 90f; 
 
     [Header("Render Texture")]
-    [SerializeField] private RawImage hudMinimapImage;    // wire in Inspector / scene gen
+    [SerializeField] private RawImage hudMinimapImage;    
     [SerializeField] private int      rtWidth  = 256;
     [SerializeField] private int      rtHeight = 256;
 
     [Header("Minimap border")]
     [SerializeField] private bool  circularMask = true;
-    [SerializeField] private Image maskImage;             // optional circle mask image
+    [SerializeField] private Image maskImage;             
 
     [Header("Rotation")]
-    [SerializeField] private bool  rotateWithPlayer = true; // map rotates to face north or player
+    [SerializeField] private bool  rotateWithPlayer = true; 
 
-    // ── Runtime ───────────────────────────────────────────────────────────
+    
     private RenderTexture _rt;
     private Transform     _localPlayerTransform;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
@@ -59,7 +46,7 @@ public class MinimapController : MonoBehaviour
         if (rotateWithPlayer) RotateWithPlayer();
     }
 
-    // ── Setup ─────────────────────────────────────────────────────────────
+    
     private void SetupRenderTexture()
     {
         _rt = new RenderTexture(rtWidth, rtHeight, 16, RenderTextureFormat.ARGB32);
@@ -87,20 +74,20 @@ public class MinimapController : MonoBehaviour
         minimapCamera.nearClipPlane    = 1f;
         minimapCamera.farClipPlane     = cameraHeight + 10f;
         minimapCamera.targetTexture    = _rt;
-        minimapCamera.depth            = -2; // render before main camera
+        minimapCamera.depth            = -2; 
 
-        // Face straight down
+        
         minimapCamera.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
     }
 
     private static int GetMinimapLayerMask()
     {
-        // Include Default + UI layer (MinimapIcon quads are on UI layer)
+        
         int mask = LayerMask.GetMask("Default", "UI");
         return mask == 0 ? ~0 : mask;
     }
 
-    // ── Follow ────────────────────────────────────────────────────────────
+    
     private void FollowPlayer()
     {
         if (_localPlayerTransform == null)
@@ -132,11 +119,11 @@ public class MinimapController : MonoBehaviour
         }
     }
 
-    // ── Public API: icons register/unregister themselves ──────────────────
-    public void RegisterIcon(MinimapIcon icon)   { /* icons self-manage; hook for future list UI */ }
+    
+    public void RegisterIcon(MinimapIcon icon)   {  }
     public void UnregisterIcon(MinimapIcon icon) { }
 
-    // ── Zoom ──────────────────────────────────────────────────────────────
+    
     public void SetZoom(float worldUnitsHalfSize)
     {
         orthographicSize = Mathf.Clamp(worldUnitsHalfSize, 20f, 180f);

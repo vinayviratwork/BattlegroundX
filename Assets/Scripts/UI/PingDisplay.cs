@@ -1,28 +1,17 @@
-using TMPro;
+﻿using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Displays the local client's round-trip latency (ping) on the HUD.
-/// Unity NGO does not expose per-client RTT directly, so we measure it
-/// ourselves with a lightweight ServerRpc/ClientRpc echo every N seconds.
-///
-/// The displayed value is a rolling average over the last 5 samples to
-/// avoid flickering.  Colour-coded: green < 60ms, yellow < 120ms, red > 120ms.
-///
-/// Add to the HUD canvas; wire the TMP_Text in the Inspector or let the
-/// Scene Generator create it automatically.
-/// </summary>
 public class PingDisplay : NetworkBehaviour
 {
-    // ── Inspector ─────────────────────────────────────────────────────────
+    
     [Header("UI")]
     [SerializeField] private TMP_Text pingText;
-    [SerializeField] private Image    pingIcon;    // optional coloured dot
+    [SerializeField] private Image    pingIcon;    
 
     [Header("Ping settings")]
-    [SerializeField] private float measureInterval = 2f;    // seconds between pings
+    [SerializeField] private float measureInterval = 2f;    
     [SerializeField] private int   averageSamples  = 5;
 
     [Header("Thresholds (ms)")]
@@ -34,7 +23,7 @@ public class PingDisplay : NetworkBehaviour
     [SerializeField] private Color mediumColor  = new Color(1f, 0.8f, 0f);
     [SerializeField] private Color badColor     = Color.red;
 
-    // ── State ─────────────────────────────────────────────────────────────
+    
     private float   _measureTimer;
     private float   _echoPendingSendTime;
     private bool    _echoInFlight;
@@ -42,10 +31,10 @@ public class PingDisplay : NetworkBehaviour
     private int     _sampleHead;
     private int     _sampleCount;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     public override void OnNetworkSpawn()
     {
-        // Only run on the local owner (each client self-pings)
+        
         if (!IsOwner) { enabled = false; return; }
 
         _samples    = new float[averageSamples];
@@ -68,11 +57,11 @@ public class PingDisplay : NetworkBehaviour
         }
     }
 
-    // ── RPC echo ──────────────────────────────────────────────────────────
+    
     [ServerRpc]
     private void PingServerRpc(ServerRpcParams rpcParams = default)
     {
-        // Echo immediately back to the caller
+        
         PingResponseClientRpc(new ClientRpcParams
         {
             Send = new ClientRpcSendParams
@@ -87,7 +76,7 @@ public class PingDisplay : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        float rtt = (Time.unscaledTime - _echoPendingSendTime) * 1000f; // ms
+        float rtt = (Time.unscaledTime - _echoPendingSendTime) * 1000f; 
         _echoInFlight = false;
 
         _samples[_sampleHead] = rtt;
@@ -101,7 +90,7 @@ public class PingDisplay : NetworkBehaviour
         UpdateDisplay(Mathf.RoundToInt(avg));
     }
 
-    // ── Display ───────────────────────────────────────────────────────────
+    
     private void UpdateDisplay(int ms)
     {
         if (pingText == null) return;

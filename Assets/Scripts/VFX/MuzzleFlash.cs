@@ -1,11 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-/// <summary>
-/// Attached to the muzzle point Transform on a weapon model.
-/// NetworkWeapon calls Flash() on the owner client whenever a shot fires.
-/// A light pulse is included; assign a point light child or leave unassigned
-/// for the procedural fallback from VFXManager.
-/// </summary>
 public class MuzzleFlash : MonoBehaviour
 {
     [Header("Light flash")]
@@ -20,10 +14,10 @@ public class MuzzleFlash : MonoBehaviour
 
     private float _flashTimer;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
-        // Auto-create a child light if none assigned
+        
         if (muzzleLight == null)
         {
             var lightGo = new GameObject("MuzzleLight");
@@ -49,17 +43,12 @@ public class MuzzleFlash : MonoBehaviour
         }
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Call from NetworkWeapon on the owning client to show a muzzle flash.
-    /// </summary>
     public void Flash()
     {
-        // Particle VFX
+        
         VFXManager.Instance?.PlayMuzzleFlash(transform.position, transform.rotation);
 
-        // Light
+        
         if (muzzleLight != null)
         {
             muzzleLight.enabled   = true;
@@ -67,16 +56,13 @@ public class MuzzleFlash : MonoBehaviour
             _flashTimer = flashDuration;
         }
 
-        // Shell eject
+        
         if (shellEjectParticles != null)
         {
             shellEjectParticles.Play();
         }
     }
 
-    /// <summary>
-    /// Returns the forward direction of the muzzle (used by weapon for spawn position).
-    /// </summary>
     public Vector3 MuzzleForward => transform.forward;
     public Vector3 MuzzlePosition => transform.position;
 }

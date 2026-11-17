@@ -1,8 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-/// <summary>
-/// Legacy bridge kept for compatibility. Prefer MobileInputManager for new scenes.
-/// </summary>
 public class MobileJoystickBridge : MonoBehaviour
 {
     [SerializeField] private NetworkPlayerController player;

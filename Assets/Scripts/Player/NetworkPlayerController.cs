@@ -1,15 +1,10 @@
-using Unity.Netcode;
+﻿using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Third-person networked player controller.
-/// Supports: walk, run, sprint, crouch, jump, aim, camera follow/rotate.
-/// PC: WASD + mouse. Mobile: virtual joystick bridge.
-/// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class NetworkPlayerController : NetworkBehaviour
 {
-    // ── Movement ──────────────────────────────────────────────────────────
+    
     [Header("Movement")]
     [SerializeField] private float walkSpeed    = 4.5f;
     [SerializeField] private float runSpeed     = 7f;
@@ -20,7 +15,7 @@ public class NetworkPlayerController : NetworkBehaviour
     [SerializeField] private float groundCheckDistance = 0.3f;
     [SerializeField] private LayerMask groundMask;
 
-    // ── Camera ────────────────────────────────────────────────────────────
+    
     [Header("Camera")]
     [SerializeField] private Transform cameraPivot;
     [SerializeField] private Camera    playerCamera;
@@ -29,26 +24,26 @@ public class NetworkPlayerController : NetworkBehaviour
     [SerializeField] private float     minPitch = -60f;
     [SerializeField] private float     maxPitch =  60f;
 
-    // ── Camera offset positions ───────────────────────────────────────────
+    
     [Header("Camera Offset")]
     [SerializeField] private Vector3 normalCameraOffset = new Vector3(0.4f, 0.2f, -3.5f);
     [SerializeField] private Vector3 aimCameraOffset    = new Vector3(0.3f, 0.1f, -1.8f);
     [SerializeField] private float   cameraLerpSpeed    = 10f;
 
-    // ── Crouch ────────────────────────────────────────────────────────────
+    
     [Header("Crouch")]
     [SerializeField] private float normalHeight  = 2f;
     [SerializeField] private float crouchHeight  = 1.1f;
     [SerializeField] private float crouchCenterY = 0.55f;
     [SerializeField] private float normalCenterY = 1f;
 
-    // ── State (networked) ─────────────────────────────────────────────────
+    
     public NetworkVariable<bool>  IsRunning  = new(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public NetworkVariable<bool>  IsCrouching = new(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public NetworkVariable<bool>  IsAiming   = new(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public NetworkVariable<Vector3> NetworkPosition = new(Vector3.zero, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
-    // ── Private ───────────────────────────────────────────────────────────
+    
     private CharacterController _cc;
     private float _verticalVelocity;
     private float _pitch;
@@ -56,14 +51,14 @@ public class NetworkPlayerController : NetworkBehaviour
     private bool  _isAiming;
     private bool  _isGrounded;
 
-    // Mobile input
+    
     private Vector2 _mobileMove;
     private Vector2 _mobileLookDelta;
 
-    // Camera follow transform for non-owner
+    
     private Transform _cameraTransform;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         _cc = GetComponent<CharacterController>();
@@ -98,11 +93,11 @@ public class NetworkPlayerController : NetworkBehaviour
         HandleGravity();
         SyncCameraOffset();
 
-        // Broadcast position for lag-compensation
+        
         if (IsOwner) NetworkPosition.Value = transform.position;
     }
 
-    // ── Ground ────────────────────────────────────────────────────────────
+    
     private void HandleGroundCheck()
     {
         _isGrounded = Physics.CheckSphere(
@@ -110,7 +105,7 @@ public class NetworkPlayerController : NetworkBehaviour
             groundCheckDistance, groundMask, QueryTriggerInteraction.Ignore);
     }
 
-    // ── Movement ──────────────────────────────────────────────────────────
+    
     private void HandleMovement()
     {
         Vector2 input = GetMoveInput();
@@ -144,7 +139,7 @@ public class NetworkPlayerController : NetworkBehaviour
 #endif
     }
 
-    // ── Jump ──────────────────────────────────────────────────────────────
+    
     private void HandleJump()
     {
         bool jumpPressed = Input.GetKeyDown(KeyCode.Space);
@@ -156,7 +151,7 @@ public class NetworkPlayerController : NetworkBehaviour
         }
     }
 
-    // ── Gravity ───────────────────────────────────────────────────────────
+    
     private void HandleGravity()
     {
         if (_isGrounded && _verticalVelocity < 0f)
@@ -166,7 +161,7 @@ public class NetworkPlayerController : NetworkBehaviour
         _verticalVelocity = Mathf.Max(_verticalVelocity, gravity);
     }
 
-    // ── Crouch ────────────────────────────────────────────────────────────
+    
     private void HandleCrouchInput()
     {
         if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(KeyCode.LeftControl))
@@ -182,13 +177,13 @@ public class NetworkPlayerController : NetworkBehaviour
         _cc.center = new Vector3(0, crouching ? crouchCenterY : normalCenterY, 0);
     }
 
-    // ── Aim ───────────────────────────────────────────────────────────────
+    
     private void HandleAim()
     {
         _isAiming = Input.GetMouseButton(1);
     }
 
-    // ── Camera rotation ───────────────────────────────────────────────────
+    
     private void HandleCameraRotation()
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -211,7 +206,7 @@ public class NetworkPlayerController : NetworkBehaviour
             cameraPivot.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
     }
 
-    // ── Camera offset lerp (hip / aim) ────────────────────────────────────
+    
     private void SyncCameraOffset()
     {
         if (_cameraTransform == null) return;
@@ -220,7 +215,7 @@ public class NetworkPlayerController : NetworkBehaviour
             _cameraTransform.localPosition, target, cameraLerpSpeed * Time.deltaTime);
     }
 
-    // ── Mobile API ────────────────────────────────────────────────────────
+    
     public void SetMobileMove(Vector2 value) => _mobileMove = Vector2.ClampMagnitude(value, 1f);
     public void SetMobileLookDelta(Vector2 delta) { if (IsOwner) _mobileLookDelta += delta * mouseSensitivity; }
     public void MobileCrouch() { if (IsOwner) { _isCrouching = !_isCrouching; SetCrouchShape(_isCrouching); } }
@@ -229,7 +224,7 @@ public class NetworkPlayerController : NetworkBehaviour
     public void MobileAimEnd()   { if (IsOwner) _isAiming = false; }
     public void FireMobile()   { if (IsOwner) GetComponent<NetworkWeapon>()?.TryFire(); }
 
-    // ── Public getters ────────────────────────────────────────────────────
+    
     public Camera PlayerCamera => playerCamera;
     public bool   LocalIsAiming => _isAiming;
 }

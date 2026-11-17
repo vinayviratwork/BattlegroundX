@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -10,11 +10,6 @@ using Unity.Netcode.Components;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine.UI;
 
-/// <summary>
-/// One-click scene generator: Tools → Battleground X → Generate Full Scene
-/// Creates a playable greybox battle-royale map with terrain, buildings, roads,
-/// trees, 10 spawn points, 30 loot zones, all network prefabs wired, and full UI.
-/// </summary>
 public static class BattlegroundXSceneGenerator
 {
     private const string PrefabFolder = "Assets/Prefabs";
@@ -22,60 +17,60 @@ public static class BattlegroundXSceneGenerator
     private const string MatFolder    = "Assets/Materials";
     private const string AnimFolder   = "Assets/Animations";
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     [MenuItem("Tools/Battleground X/Generate Full Scene")]
     public static void Generate()
     {
         EnsureFolders();
 
-        // ── Prefabs ───────────────────────────────────────────────────────
+        
         var playerPrefab     = CreatePlayerPrefab();
         var medkitPrefab     = CreateLootPrefab("Loot_Medkit",     LootType.Medkit,      40, Color.red);
         var rifleAmmoPrefab  = CreateLootPrefab("Loot_RifleAmmo",  LootType.AmmoRifle,   30, new Color(1f, 0.65f, 0f));
         var shotgunAmmoPrefab= CreateLootPrefab("Loot_ShotgunAmmo",LootType.AmmoShotgun, 16, new Color(0.8f, 0.4f, 0f));
         var sniperAmmoPrefab = CreateLootPrefab("Loot_SniperAmmo", LootType.AmmoSniper,   5, new Color(0.3f, 0.3f, 1f));
 
-        // ── New scene ─────────────────────────────────────────────────────
+        
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
-        // ── Terrain / ground ──────────────────────────────────────────────
+        
         BuildTerrain();
 
-        // ── Map features ──────────────────────────────────────────────────
+        
         BuildRoads();
         BuildBuildings();
         BuildTrees();
         BuildCoverObjects();
         BuildBridges();
 
-        // ── Network infrastructure ────────────────────────────────────────
+        
         var nm = BuildNetworkManager(playerPrefab);
         BuildMatchObjects();
         var spawnParent = BuildSpawnPoints();
         var lootParent  = BuildLootSpawner(medkitPrefab, rifleAmmoPrefab, shotgunAmmoPrefab, sniperAmmoPrefab);
 
-        // ── Audio / utilities ─────────────────────────────────────────────
+        
         BuildAudioManager();
 
-        // ── UI (Phase 1 + Phase 2) ────────────────────────────────────────
+        
         BuildUI();
 
-        // ── Phase 2: VFX manager ──────────────────────────────────────────
+        
         BuildVFXManager();
 
-        // ── Phase 2: Minimap ──────────────────────────────────────────────
+        
         BuildMinimap();
 
-        // ── Lighting ──────────────────────────────────────────────────────
+        
         SetupLighting();
 
-        // ── Generate Animator Controller ──────────────────────────────────
+        
         var animCtrl = AnimatorControllerGenerator.Generate();
 
-        // ── Wire Animator Controller into player prefab ───────────────────
+        
         WireAnimatorControllerIntoPrefab(animCtrl);
 
-        // ── Save ──────────────────────────────────────────────────────────
+        
         string scenePath = SceneFolder + "/BattlegroundX_Main.unity";
         EditorSceneManager.SaveScene(scene, scenePath);
         AssetDatabase.SaveAssets();
@@ -99,21 +94,21 @@ public static class BattlegroundXSceneGenerator
             "Got it!");
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // TERRAIN
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildTerrain()
     {
-        // Large flat ground (200×200 units visible play area)
+        
         var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
         ground.name = "Terrain_Ground";
-        ground.transform.localScale = new Vector3(36, 1, 36);  // 360×360
+        ground.transform.localScale = new Vector3(36, 1, 36);  
         ground.transform.position   = Vector3.zero;
         SetColor(ground, new Color(0.25f, 0.42f, 0.18f));
         ground.tag   = "Ground";
         ground.layer = LayerMask.NameToLayer("Ground") >= 0 ? LayerMask.NameToLayer("Ground") : 0;
 
-        // Hills: a few raised cube "hills" around the edge
+        
         int[,] hillData = { {-130,0,-130},{130,0,-130},{-130,0,130},{130,0,130},{0,0,-155},{0,0,155} };
         for (int i = 0; i < hillData.GetLength(0); i++)
         {
@@ -125,17 +120,17 @@ public static class BattlegroundXSceneGenerator
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // ROADS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildRoads()
     {
         var parent = new GameObject("Roads").transform;
 
-        // Main cross roads
+        
         CreateRoad(parent, "Road_NS", new Vector3(0, 0.02f, 0),   new Vector3(2, 0.1f, 180));
         CreateRoad(parent, "Road_EW", new Vector3(0, 0.02f, 0),   new Vector3(180, 0.1f, 2));
-        // Diagonal roads
+        
         CreateRoad(parent, "Road_NE", new Vector3(60, 0.02f, 60), new Vector3(1.5f, 0.1f, 80),  45);
         CreateRoad(parent, "Road_NW", new Vector3(-60, 0.02f, 60),new Vector3(1.5f, 0.1f, 80), -45);
         CreateRoad(parent, "Road_SE", new Vector3(60, 0.02f,-60), new Vector3(1.5f, 0.1f, 80),  45);
@@ -151,17 +146,17 @@ public static class BattlegroundXSceneGenerator
         r.transform.localScale = scale;
         r.transform.eulerAngles = new Vector3(0, yRot, 0);
         SetColor(r, new Color(0.3f, 0.3f, 0.3f));
-        Object.DestroyImmediate(r.GetComponent<BoxCollider>());  // road: no collider needed (ground beneath)
+        Object.DestroyImmediate(r.GetComponent<BoxCollider>());  
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // BUILDINGS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildBuildings()
     {
         var parent = new GameObject("Buildings").transform;
 
-        // 4 compound clusters + isolated houses
+        
         Vector3[] zones = {
             new( 60,0, 60), new(-60,0, 60), new( 60,0,-60), new(-60,0,-60),
             new(  0,0,100), new(  0,0,-100), new(100,0,0),  new(-100,0,0)
@@ -170,16 +165,16 @@ public static class BattlegroundXSceneGenerator
         int idx = 0;
         foreach (var z in zones)
         {
-            // Main building
+            
             CreateBuilding(parent, $"Building_{idx}_Main", z + new Vector3(0,0,0), new Vector3(12,8,10));
-            // Side house
+            
             CreateBuilding(parent, $"Building_{idx}_A",    z + new Vector3(16,0,5), new Vector3(7,5,7));
-            // Small shed
+            
             CreateBuilding(parent, $"Building_{idx}_B",    z + new Vector3(-14,0,-4), new Vector3(5,3,5));
             idx++;
         }
 
-        // Isolated watchtowers
+        
         for (int i = 0; i < 4; i++)
         {
             float ang = i * 90f * Mathf.Deg2Rad;
@@ -194,7 +189,7 @@ public static class BattlegroundXSceneGenerator
         root.transform.SetParent(parent);
         root.transform.position = pos;
 
-        // Walls (hollow box — 4 walls + roof, no floor so player can walk in)
+        
         float w = size.x, h = size.y, d = size.z, t = 0.4f;
         CreateWall(root.transform, "Wall_N",  new Vector3(0,h/2f, d/2f),  new Vector3(w, h, t));
         CreateWall(root.transform, "Wall_S",  new Vector3(0,h/2f,-d/2f),  new Vector3(w, h, t));
@@ -221,14 +216,14 @@ public static class BattlegroundXSceneGenerator
         var root = new GameObject(name);
         root.transform.SetParent(parent);
         root.transform.position = pos;
-        // Base pillar
+        
         var base_ = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         base_.name = "Pillar";
         base_.transform.SetParent(root.transform);
         base_.transform.localPosition = new Vector3(0, 7, 0);
         base_.transform.localScale    = new Vector3(1.5f, 7f, 1.5f);
         SetColor(base_, new Color(0.5f, 0.4f, 0.3f));
-        // Platform
+        
         var plat = GameObject.CreatePrimitive(PrimitiveType.Cube);
         plat.name = "Platform";
         plat.transform.SetParent(root.transform);
@@ -237,9 +232,9 @@ public static class BattlegroundXSceneGenerator
         SetColor(plat, new Color(0.5f, 0.4f, 0.3f));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // TREES
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildTrees()
     {
         var parent = new GameObject("Vegetation").transform;
@@ -250,9 +245,9 @@ public static class BattlegroundXSceneGenerator
             float x = (float)(rng.NextDouble() * 320 - 160);
             float z = (float)(rng.NextDouble() * 320 - 160);
 
-            // Skip road area
+            
             if (Mathf.Abs(x) < 5 || Mathf.Abs(z) < 5) continue;
-            // Skip building cluster centres
+            
             bool nearBuilding = false;
             foreach (var bz in new[] { new Vector2(60,60), new Vector2(-60,60), new Vector2(60,-60), new Vector2(-60,-60) })
                 if (Vector2.Distance(new Vector2(x,z), bz) < 20) { nearBuilding = true; break; }
@@ -271,7 +266,7 @@ public static class BattlegroundXSceneGenerator
         root.transform.SetParent(parent);
         root.transform.position = pos;
 
-        // Trunk
+        
         var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         trunk.name = "Trunk";
         trunk.transform.SetParent(root.transform);
@@ -279,7 +274,7 @@ public static class BattlegroundXSceneGenerator
         trunk.transform.localScale    = new Vector3(0.3f, h * 0.5f, 0.3f);
         SetColor(trunk, new Color(0.36f, 0.22f, 0.1f));
 
-        // Canopy
+        
         var canopy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         canopy.name = "Canopy";
         canopy.transform.SetParent(root.transform);
@@ -289,15 +284,15 @@ public static class BattlegroundXSceneGenerator
                                    0.4f + (float)rng.NextDouble() * 0.3f, 0.1f));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // COVER OBJECTS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildCoverObjects()
     {
         var parent = new GameObject("Cover").transform;
         var rng    = new System.Random(99);
 
-        // Rocks
+        
         for (int i = 0; i < 40; i++)
         {
             float x = (float)(rng.NextDouble() * 280 - 140);
@@ -316,7 +311,7 @@ public static class BattlegroundXSceneGenerator
             SetColor(rock, new Color(0.5f, 0.5f, 0.5f));
         }
 
-        // Sandbag walls
+        
         for (int i = 0; i < 20; i++)
         {
             float x = (float)(rng.NextDouble() * 240 - 120);
@@ -330,7 +325,7 @@ public static class BattlegroundXSceneGenerator
             SetColor(sb, new Color(0.76f, 0.70f, 0.50f));
         }
 
-        // Barrels
+        
         for (int i = 0; i < 30; i++)
         {
             float x = (float)(rng.NextDouble() * 200 - 100);
@@ -344,13 +339,13 @@ public static class BattlegroundXSceneGenerator
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // BRIDGES
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildBridges()
     {
         var parent = new GameObject("Bridges").transform;
-        // Two raised bridges crossing central gully
+        
         CreateBridge(parent, "Bridge_NS", new Vector3(0, 2f, 0),   new Vector3(4, 0.4f, 30));
         CreateBridge(parent, "Bridge_EW", new Vector3(0, 2f, 0),   new Vector3(30, 0.4f, 4));
     }
@@ -363,7 +358,7 @@ public static class BattlegroundXSceneGenerator
         b.transform.position   = pos;
         b.transform.localScale = size;
         SetColor(b, new Color(0.55f, 0.5f, 0.45f));
-        // Railings
+        
         for (int s = -1; s <= 1; s += 2)
         {
             var rail = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -379,9 +374,9 @@ public static class BattlegroundXSceneGenerator
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // NETWORK MANAGER
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static GameObject BuildNetworkManager(GameObject playerPrefab)
     {
         var nmGo      = new GameObject("NetworkManager");
@@ -396,17 +391,17 @@ public static class BattlegroundXSceneGenerator
         return nmGo;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // MATCH OBJECTS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildMatchObjects()
     {
-        // Match manager
+        
         var matchGo = new GameObject("NetworkMatchManager");
         matchGo.AddComponent<NetworkObject>();
         matchGo.AddComponent<NetworkMatchManager>();
 
-        // Safe zone
+        
         var zoneGo = new GameObject("NetworkSafeZone");
         zoneGo.AddComponent<NetworkObject>();
         var zoneVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -428,29 +423,29 @@ public static class BattlegroundXSceneGenerator
         zoneSO.FindProperty("visualRing").objectReferenceValue = zoneVisual.transform;
         zoneSO.ApplyModifiedPropertiesWithoutUndo();
 
-        // Spawn manager
+        
         var spawnGo = new GameObject("SpawnManager");
         spawnGo.AddComponent<NetworkObject>();
         spawnGo.AddComponent<SpawnManager>();
 
-        // Lobby manager
+        
         var lobbyGo = new GameObject("LobbyManager");
         lobbyGo.AddComponent<NetworkObject>();
         lobbyGo.AddComponent<LobbyManager>();
 
-        // Audio manager
+        
         var audioGo = new GameObject("AudioManager");
         audioGo.AddComponent<AudioManager>();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // SPAWN POINTS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static Transform BuildSpawnPoints()
     {
         var parent = new GameObject("SpawnPoints").transform;
 
-        // 10 evenly distributed spawn points around the map edge
+        
         for (int i = 0; i < 10; i++)
         {
             float ang = (i / 10f) * Mathf.PI * 2f;
@@ -460,7 +455,7 @@ public static class BattlegroundXSceneGenerator
             sp.transform.position = new Vector3(Mathf.Sin(ang) * r, 0.5f, Mathf.Cos(ang) * r);
             sp.tag = "SpawnPoint";
 
-            // Visual marker (editor only gizmo via child cube)
+            
             var marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
             marker.name = "Marker";
             marker.transform.SetParent(sp.transform);
@@ -470,7 +465,7 @@ public static class BattlegroundXSceneGenerator
             Object.DestroyImmediate(marker.GetComponent<BoxCollider>());
         }
 
-        // Wire SpawnManager
+        
         var sm = Object.FindObjectOfType<SpawnManager>();
         if (sm != null)
         {
@@ -485,15 +480,15 @@ public static class BattlegroundXSceneGenerator
         return parent;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // LOOT SPAWNER + LOOT ZONE MARKERS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static Transform BuildLootSpawner(
         GameObject medkit, GameObject rifleAmmo, GameObject shotgunAmmo, GameObject sniperAmmo)
     {
         var parent = new GameObject("LootZones").transform;
 
-        // 30 loot spawn markers spread across the map
+        
         var rng = new System.Random(7);
         for (int i = 0; i < 30; i++)
         {
@@ -504,7 +499,7 @@ public static class BattlegroundXSceneGenerator
             lp.transform.SetParent(parent);
             lp.transform.position = new Vector3(x, 0.5f, z);
 
-            // Visual marker
+            
             var marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             marker.name = "LootMarker";
             marker.transform.SetParent(lp.transform);
@@ -514,18 +509,18 @@ public static class BattlegroundXSceneGenerator
             Object.DestroyImmediate(marker.GetComponent<SphereCollider>());
         }
 
-        // LootSpawner NetworkObject
+        
         var lsGo = new GameObject("LootSpawner");
         lsGo.AddComponent<NetworkObject>();
         var ls = lsGo.AddComponent<LootSpawner>();
         var lsSO = new SerializedObject(ls);
-        // Wire prefabs (requires prefabs were saved to disk)
+        
         lsSO.FindProperty("medkitPrefab").objectReferenceValue      = medkit?.GetComponent<NetworkLootPickup>();
         lsSO.FindProperty("rifleAmmoPrefab").objectReferenceValue   = rifleAmmo?.GetComponent<NetworkLootPickup>();
         lsSO.FindProperty("shotgunAmmoPrefab").objectReferenceValue = shotgunAmmo?.GetComponent<NetworkLootPickup>();
         lsSO.FindProperty("sniperAmmoPrefab").objectReferenceValue  = sniperAmmo?.GetComponent<NetworkLootPickup>();
 
-        // Wire spawn points array
+        
         var spArr = lsSO.FindProperty("lootSpawnPoints");
         spArr.arraySize = parent.childCount;
         for (int i = 0; i < parent.childCount; i++)
@@ -535,23 +530,23 @@ public static class BattlegroundXSceneGenerator
         return parent;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // AUDIO MANAGER
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildAudioManager()
     {
-        // Already created in BuildMatchObjects; nothing extra needed here.
+        
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // UI
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildUI()
     {
-        // ── Event System ──────────────────────────────────────────────────
+        
         new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
-        // ── Main Canvas ───────────────────────────────────────────────────
+        
         var canvasGo = new GameObject("GameCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas   = canvasGo.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -559,7 +554,7 @@ public static class BattlegroundXSceneGenerator
         scaler.uiScaleMode       = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920, 1080);
 
-        // ── Connection panel ──────────────────────────────────────────────
+        
         var connPanel   = CreatePanel(canvasGo.transform, "ConnectionPanel",
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -20), new Vector2(760, 220),
             new Color(0,0,0,0.75f));
@@ -582,26 +577,26 @@ public static class BattlegroundXSceneGenerator
         relaySO.FindProperty("playerListText").objectReferenceValue = playerList;
         relaySO.ApplyModifiedPropertiesWithoutUndo();
 
-        // ── HUD ───────────────────────────────────────────────────────────
-        // Health
+        
+        
         var healthText   = CreateText(canvasGo.transform, "HealthText",  "HP: 100", new Vector2(-820, -520), 28);
-        // Health bar
+        
         var healthSlider = CreateSlider(canvasGo.transform, "HealthSlider", new Vector2(-820, -545));
 
-        // Ammo
+        
         var ammoText      = CreateText(canvasGo.transform, "AmmoText",      "30 / 150",    new Vector2(820, -520), 28);
         var weaponText    = CreateText(canvasGo.transform, "WeaponNameText","Assault Rifle",new Vector2(820, -550), 20);
         var reloadingText = CreateText(canvasGo.transform, "ReloadingText", "RELOADING…",  new Vector2(820, -575), 20);
 
-        // Match info
+        
         var playersText = CreateText(canvasGo.transform, "PlayersText",    "⬟ 10",   new Vector2(820, 520), 26);
         var timerText   = CreateText(canvasGo.transform, "TimerText",      "15:00",   new Vector2(0,  520), 32);
         var phaseText   = CreateText(canvasGo.transform, "PhaseText",      "Lobby",   new Vector2(0,  490), 20);
 
-        // Zone
+        
         var zoneText    = CreateText(canvasGo.transform, "ZoneText",       "SAFE",    new Vector2(820, 490), 22);
 
-        // Kill feed
+        
         var killFeedGo = new GameObject("KillFeedContainer", typeof(RectTransform), typeof(VerticalLayoutGroup));
         killFeedGo.transform.SetParent(canvasGo.transform, false);
         var kfRT = killFeedGo.GetComponent<RectTransform>();
@@ -614,11 +609,11 @@ public static class BattlegroundXSceneGenerator
         vlg.childAlignment    = TextAnchor.LowerRight;
         vlg.spacing           = 4;
 
-        // Kill feed entry prefab text
+        
         var kfEntry = CreateText(canvasGo.transform, "KillFeedEntry_Prefab", "", Vector2.zero, 18);
         kfEntry.gameObject.SetActive(false);
 
-        // Match end panel
+        
         var matchEndPanel = CreatePanel(canvasGo.transform, "MatchEndPanel",
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 400),
             new Color(0,0,0,0.9f));
@@ -628,21 +623,21 @@ public static class BattlegroundXSceneGenerator
         var returnBtn       = CreateButton(matchEndPanel.transform, "ReturnBtn", "Return to Lobby",
             new Vector2(0, -170), null);
 
-        // Lobby status panel
+        
         var lobbyPanel = CreatePanel(canvasGo.transform, "LobbyStatusPanel",
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(400, 160),
             new Color(0,0,0,0.6f));
         var readyCountText = CreateText(lobbyPanel.transform, "ReadyCountText", "Ready: 0/0", Vector2.zero, 28);
         var readyBtn       = CreateButton(lobbyPanel.transform, "ReadyButton", "READY", new Vector2(0,-60), null);
 
-        // Countdown panel
+        
         var countdownPanel = CreatePanel(canvasGo.transform, "CountdownPanel",
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(300, 200),
             new Color(0,0,0,0.7f));
         countdownPanel.gameObject.SetActive(false);
         var countdownText = CreateText(countdownPanel.transform, "CountdownText", "5", Vector2.zero, 96);
 
-        // ── Wire NetworkHUD ───────────────────────────────────────────────
+        
         var hudGo = new GameObject("NetworkHUD");
         var hud   = hudGo.AddComponent<NetworkHUD>();
         var hudSO = new SerializedObject(hud);
@@ -668,13 +663,13 @@ public static class BattlegroundXSceneGenerator
         hudSO.FindProperty("countdownText").objectReferenceValue     = countdownText;
         hudSO.ApplyModifiedPropertiesWithoutUndo();
 
-        // ── Wire RelaySessionUI extra fields ──────────────────────────────
+        
         relaySO.FindProperty("lobbyPanel").objectReferenceValue      = connPanel.gameObject;
         relaySO.FindProperty("countdownPanel").objectReferenceValue  = countdownPanel.gameObject;
         relaySO.FindProperty("countdownText").objectReferenceValue   = countdownText;
         relaySO.ApplyModifiedPropertiesWithoutUndo();
 
-        // ── Phase 2 UI: Minimap RawImage ──────────────────────────────────
+        
         var minimapPanel = CreatePanel(canvasGo.transform, "MinimapPanel",
             new Vector2(1f, 0f), new Vector2(1f, 0f),
             new Vector2(-85f, 85f), new Vector2(160f, 160f),
@@ -687,16 +682,16 @@ public static class BattlegroundXSceneGenerator
         mmRT.offsetMin = new Vector2(4, 4); mmRT.offsetMax = new Vector2(-4, -4);
         var mmRawImage = minimapImageGo.GetComponent<RawImage>();
 
-        // Wire minimap RawImage into NetworkHUD
+        
         hudSO.FindProperty("minimapImage").objectReferenceValue = mmRawImage;
         hudSO.ApplyModifiedPropertiesWithoutUndo();
 
-        // ── Phase 2 UI: Ping display ──────────────────────────────────────
+        
         var pingText = CreateText(canvasGo.transform, "PingText", "Ping: -- ms",
             new Vector2(-820f, 520f), 18f);
         pingText.color = Color.green;
 
-        // ── Phase 2 UI: Settings button ───────────────────────────────────
+        
         var settingsGo = new GameObject("SettingsMenu");
         var settingsMenu = settingsGo.AddComponent<SettingsMenu>();
 
@@ -706,7 +701,7 @@ public static class BattlegroundXSceneGenerator
             new Color(0.05f, 0.05f, 0.05f, 0.95f));
         settingsPanel.gameObject.SetActive(false);
 
-        // Settings content rows
+        
         var sensTitleText  = CreateText(settingsPanel.transform, "SensTitle",   "SENSITIVITY",    new Vector2(0, 220), 22);
         var mouseSensLabel = CreateText(settingsPanel.transform, "MouseSensLbl","Mouse Sens: 2.0",new Vector2(-80,180), 18);
         var mouseSensSlider= CreateSlider(settingsPanel.transform, "MouseSensSlider", new Vector2(80, 180));
@@ -714,7 +709,7 @@ public static class BattlegroundXSceneGenerator
         var mobSensSlider  = CreateSlider(settingsPanel.transform, "MobSensSlider", new Vector2(80, 140));
 
         var graphTitle     = CreateText(settingsPanel.transform, "GraphTitle",  "GRAPHICS",       new Vector2(0, 90),  22);
-        // Quality dropdown (simple label + placeholder dropdown)
+        
         var qualLabel      = CreateText(settingsPanel.transform, "QualLabel",   "Quality",        new Vector2(-120, 50), 18);
 
         var audioTitle     = CreateText(settingsPanel.transform, "AudioTitle",  "AUDIO",          new Vector2(0, -10), 22);
@@ -726,11 +721,11 @@ public static class BattlegroundXSceneGenerator
         var applyBtn  = CreateButton(settingsPanel.transform, "ApplyButton",  "APPLY",  new Vector2(-80, -180), null);
         var closeBtn  = CreateButton(settingsPanel.transform, "CloseButton",  "CLOSE",  new Vector2( 80, -180), null);
 
-        // Settings open button on HUD (gear icon)
+        
         var settingsOpenBtn = CreateButton(canvasGo.transform, "SettingsOpenButton", "⚙",
             new Vector2(-820f, 490f), null);
 
-        // Wire SettingsMenu
+        
         var smSO = new SerializedObject(settingsMenu);
         smSO.FindProperty("settingsPanel").objectReferenceValue      = settingsPanel.gameObject;
         smSO.FindProperty("closeButton").objectReferenceValue        = closeBtn;
@@ -745,10 +740,10 @@ public static class BattlegroundXSceneGenerator
         smSO.FindProperty("sfxVolumeLabel").objectReferenceValue     = sfxVolLabel;
         smSO.ApplyModifiedPropertiesWithoutUndo();
 
-        // Wire open button to SettingsMenu.ToggleSettings
+        
         settingsOpenBtn.onClick.AddListener(() => settingsMenu.ToggleSettings());
 
-        // ── Phase 2 UI: Screen flash image (for VFXManager) ───────────────
+        
         var flashGo = new GameObject("ScreenFlash", typeof(RectTransform), typeof(Image));
         flashGo.transform.SetParent(canvasGo.transform, false);
         var flashRT = flashGo.GetComponent<RectTransform>();
@@ -759,7 +754,7 @@ public static class BattlegroundXSceneGenerator
         flashImg.raycastTarget = false;
         flashGo.SetActive(false);
 
-        // ── Create VFXManager and wire screen flash ───────────────────────
+        
         var vfxGo = Object.FindObjectOfType<VFXManager>()?.gameObject
                     ?? new GameObject("VFXManager");
         var vfx = vfxGo.GetComponent<VFXManager>() ?? vfxGo.AddComponent<VFXManager>();
@@ -768,9 +763,9 @@ public static class BattlegroundXSceneGenerator
         vfxSO.ApplyModifiedPropertiesWithoutUndo();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // LIGHTING
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void SetupLighting()
     {
         var sun = Object.FindObjectOfType<Light>();
@@ -792,16 +787,16 @@ public static class BattlegroundXSceneGenerator
         RenderSettings.fogEndDistance   = 400f;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // PLAYER PREFAB
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static GameObject CreatePlayerPrefab()
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         go.name = "NetworkPlayer";
         SetColor(go, new Color(0.25f, 0.55f, 0.9f));
 
-        // Replace CapsuleCollider with CharacterController
+        
         Object.DestroyImmediate(go.GetComponent<CapsuleCollider>());
         var cc = go.AddComponent<CharacterController>();
         cc.height = 2f;
@@ -811,16 +806,16 @@ public static class BattlegroundXSceneGenerator
         go.layer = LayerMask.NameToLayer("Player") >= 0 ? LayerMask.NameToLayer("Player") : 0;
         go.tag   = "Player";
 
-        // Camera pivot
+        
         var pivot = new GameObject("CameraPivot").transform;
         pivot.SetParent(go.transform, false);
         pivot.localPosition = new Vector3(0, 0.7f, 0);
         pivot.gameObject.SetActive(false);
 
-        // Camera shake on pivot
+        
         pivot.gameObject.AddComponent<CameraShake>();
 
-        // Player camera
+        
         var camGo = new GameObject("PlayerCamera");
         camGo.transform.SetParent(pivot, false);
         camGo.transform.localPosition = new Vector3(0.4f, 0.2f, -3.5f);
@@ -831,11 +826,11 @@ public static class BattlegroundXSceneGenerator
         camGo.AddComponent<AudioListener>();
         camGo.SetActive(false);
 
-        // Network components
+        
         go.AddComponent<NetworkObject>();
         go.AddComponent<OwnerNetworkTransform>();
 
-        // Gameplay components
+        
         var ctrl = go.AddComponent<NetworkPlayerController>();
         var ctrlSO = new SerializedObject(ctrl);
         ctrlSO.FindProperty("cameraPivot").objectReferenceValue = pivot;
@@ -851,32 +846,32 @@ public static class BattlegroundXSceneGenerator
         go.AddComponent<PlayerStats>();
         go.AddComponent<SpectatorController>();
 
-        // ── Phase 2 components ────────────────────────────────────────────
-        // Animator driver (requires Animator to be added after prefab open in Editor)
+        
+        
         go.AddComponent<PlayerAnimatorController>();
-        // Blood VFX (subscribes to NetworkHealth.OnHealthChanged)
+        
         go.AddComponent<BloodEffect>();
-        // Name tag (world-space billboard)
+        
         go.AddComponent<NameTag>();
-        // Ping display (NetworkBehaviour — one per local client)
+        
         go.AddComponent<PingDisplay>();
 
-        // Muzzle point (empty child at weapon barrel position)
+        
         var muzzleGo = new GameObject("MuzzlePoint");
         muzzleGo.transform.SetParent(go.transform, false);
         muzzleGo.transform.localPosition = new Vector3(0f, 0.9f, 1.2f);
         muzzleGo.AddComponent<MuzzleFlash>();
 
-        // Save prefab
+        
         string path = PrefabFolder + "/NetworkPlayer.prefab";
         var prefab  = PrefabUtility.SaveAsPrefabAsset(go, path);
         Object.DestroyImmediate(go);
         return prefab;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // LOOT PREFABS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static GameObject CreateLootPrefab(string name, LootType type, int amount, Color color)
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -884,7 +879,7 @@ public static class BattlegroundXSceneGenerator
         go.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
         SetColor(go, color);
 
-        // Trigger collider for auto-pickup
+        
         var col = go.GetComponent<BoxCollider>();
         col.isTrigger = true;
         col.size      = new Vector3(2f, 2f, 2f);
@@ -902,9 +897,9 @@ public static class BattlegroundXSceneGenerator
         return prefab;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // UI HELPERS
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static RectTransform CreatePanel(Transform parent, string name,
         Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 size, Color bg)
     {
@@ -1008,9 +1003,9 @@ public static class BattlegroundXSceneGenerator
         return btn;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // UTILITY
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void SetColor(GameObject go, Color c)
     {
         var rend = go.GetComponent<Renderer>();
@@ -1033,13 +1028,13 @@ public static class BattlegroundXSceneGenerator
         mat.renderQueue = 3000;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // PHASE 2: VFX MANAGER
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildVFXManager()
     {
-        // VFXManager is created in BuildUI() and wired with the screen flash image.
-        // This method handles any VFX not dependent on UI (future: explosion prefabs etc.)
+        
+        
         var existing = Object.FindObjectOfType<VFXManager>();
         if (existing == null)
         {
@@ -1048,18 +1043,18 @@ public static class BattlegroundXSceneGenerator
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // PHASE 2: MINIMAP
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void BuildMinimap()
     {
-        // MinimapController GO — holds the overhead camera
+        
         var mmGo = new GameObject("MinimapSystem");
         var mmCtrl = mmGo.AddComponent<MinimapController>();
 
-        // Find the RawImage already created in BuildUI and wire it
+        
         var rawImage = Object.FindObjectOfType<RawImage>();
-        // More precise: search by name
+        
         var mmImageGo = GameObject.Find("MinimapImage");
         if (mmImageGo != null)
         {
@@ -1072,13 +1067,13 @@ public static class BattlegroundXSceneGenerator
             }
         }
 
-        // Safe zone ring on minimap
+        
         mmGo.AddComponent<MinimapSafeZoneRing>();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // PHASE 2: WIRE ANIMATOR CONTROLLER INTO PREFAB
-    // ─────────────────────────────────────────────────────────────────────
+    
+    
+    
     private static void WireAnimatorControllerIntoPrefab(AnimatorController ctrl)
     {
         if (ctrl == null) return;
@@ -1091,12 +1086,12 @@ public static class BattlegroundXSceneGenerator
             return;
         }
 
-        // Open prefab for editing
+        
         using (var scope = new PrefabUtility.EditPrefabContentsScope(prefabPath))
         {
             var root = scope.prefabContentsRoot;
 
-            // Add Animator if missing
+            
             var anim = root.GetComponent<Animator>();
             if (anim == null) anim = root.AddComponent<Animator>();
             anim.runtimeAnimatorController = ctrl;
@@ -1109,7 +1104,7 @@ public static class BattlegroundXSceneGenerator
         Debug.Log("[BattlegroundX] Animator Controller wired into NetworkPlayer prefab.");
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private static void EnsureFolders()
     {
         foreach (var path in new[] { PrefabFolder, SceneFolder, MatFolder, AnimFolder,

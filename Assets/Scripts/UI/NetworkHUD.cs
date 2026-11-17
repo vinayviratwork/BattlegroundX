@@ -1,43 +1,39 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Full in-game HUD: health bar, ammo, zone indicator, minimap placeholder,
-/// kill feed, match-end screen, lobby ready status.
-/// </summary>
 public class NetworkHUD : MonoBehaviour
 {
     public static NetworkHUD Instance { get; private set; }
 
-    // ── Health ────────────────────────────────────────────────────────────
+    
     [Header("Health")]
     [SerializeField] private Slider healthSlider;
     [SerializeField] private TMP_Text healthText;
 
-    // ── Ammo ──────────────────────────────────────────────────────────────
+    
     [Header("Ammo")]
     [SerializeField] private TMP_Text ammoText;
     [SerializeField] private TMP_Text weaponNameText;
     [SerializeField] private TMP_Text reloadingText;
 
-    // ── Match info ────────────────────────────────────────────────────────
+    
     [Header("Match Info")]
     [SerializeField] private TMP_Text playersText;
     [SerializeField] private TMP_Text timerText;
     [SerializeField] private TMP_Text phaseText;
 
-    // ── Zone ──────────────────────────────────────────────────────────────
+    
     [Header("Zone")]
     [SerializeField] private TMP_Text  zoneText;
     [SerializeField] private Image     zoneWarningImage;
     [SerializeField] private Color     safeColor   = Color.green;
     [SerializeField] private Color     dangerColor = Color.red;
 
-    // ── Kill feed ─────────────────────────────────────────────────────────
+    
     [Header("Kill Feed")]
     [SerializeField] private Transform killFeedContainer;
     [SerializeField] private TMP_Text  killFeedEntryPrefab;
@@ -45,30 +41,30 @@ public class NetworkHUD : MonoBehaviour
     [SerializeField] private float     killFeedDuration   = 4f;
     private readonly Queue<TMP_Text>   _killFeedQueue = new();
 
-    // ── Match end ─────────────────────────────────────────────────────────
+    
     [Header("Match End")]
     [SerializeField] private GameObject matchEndPanel;
     [SerializeField] private TMP_Text   matchResultText;
     [SerializeField] private TMP_Text   statsText;
     [SerializeField] private Button     returnToLobbyButton;
 
-    // ── Lobby ─────────────────────────────────────────────────────────────
+    
     [Header("Lobby")]
     [SerializeField] private GameObject lobbyStatusPanel;
     [SerializeField] private TMP_Text   readyCountText;
     [SerializeField] private Button     readyButton;
 
-    // ── Minimap placeholder ───────────────────────────────────────────────
+    
     [Header("Minimap")]
     [SerializeField] private RawImage minimapImage;
 
-    // ── Private refs ──────────────────────────────────────────────────────
+    
     private NetworkHealth      _localHealth;
     private NetworkWeapon      _localWeapon;
     private PlayerInventory    _localInventory;
     private NetworkSafeZone    _zone;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
@@ -99,7 +95,7 @@ public class NetworkHUD : MonoBehaviour
         RefreshZone();
     }
 
-    // ── Local ref discovery ───────────────────────────────────────────────
+    
     private void FindLocalRefs()
     {
         if (_localHealth != null) return;
@@ -114,7 +110,7 @@ public class NetworkHUD : MonoBehaviour
         }
     }
 
-    // ── Health ────────────────────────────────────────────────────────────
+    
     private void RefreshHealth()
     {
         if (_localHealth == null) return;
@@ -123,7 +119,7 @@ public class NetworkHUD : MonoBehaviour
         if (healthSlider != null) healthSlider.value = _localHealth.HealthRatio;
     }
 
-    // ── Ammo ──────────────────────────────────────────────────────────────
+    
     private void RefreshAmmo()
     {
         if (_localWeapon == null) return;
@@ -137,7 +133,7 @@ public class NetworkHUD : MonoBehaviour
         if (reloadingText != null) reloadingText.gameObject.SetActive(reload);
     }
 
-    // ── Match info ────────────────────────────────────────────────────────
+    
     private void RefreshMatchInfo()
     {
         var match = NetworkMatchManager.Instance;
@@ -154,7 +150,7 @@ public class NetworkHUD : MonoBehaviour
         }
     }
 
-    // ── Zone ──────────────────────────────────────────────────────────────
+    
     private void RefreshZone()
     {
         if (_zone == null || _localHealth == null) return;
@@ -163,7 +159,7 @@ public class NetworkHUD : MonoBehaviour
         if (zoneWarningImage != null) zoneWarningImage.color  = inside ? safeColor : dangerColor;
     }
 
-    // ── Kill feed ─────────────────────────────────────────────────────────
+    
     public void ShowElimination(ulong eliminatedId, ulong killerId, int placement)
     {
         string msg = killerId == ulong.MaxValue
@@ -199,7 +195,7 @@ public class NetworkHUD : MonoBehaviour
         }
     }
 
-    // ── Match end ─────────────────────────────────────────────────────────
+    
     private void ShowMatchEnd(ulong winnerId)
     {
         if (matchEndPanel == null || matchEndPanel.activeSelf) return;

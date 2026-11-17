@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,9 +12,6 @@ using Unity.Services.Relay.Models;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Full lobby UI: host / join / leave, player list, countdown display.
-/// </summary>
 public class RelaySessionUI : MonoBehaviour
 {
     public static RelaySessionUI Instance { get; private set; }
@@ -35,7 +32,7 @@ public class RelaySessionUI : MonoBehaviour
 
     private bool _servicesReady;
 
-    // ─────────────────────────────────────────────────────────────────────
+    
     private void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
@@ -48,7 +45,7 @@ public class RelaySessionUI : MonoBehaviour
         StartCoroutine(PlayerListRefresh());
     }
 
-    // ── Services init ─────────────────────────────────────────────────────
+    
     private async Task InitializeServices()
     {
         try
@@ -67,7 +64,7 @@ public class RelaySessionUI : MonoBehaviour
         }
     }
 
-    // ── Host ──────────────────────────────────────────────────────────────
+    
     public async void HostGame()
     {
         if (!await EnsureReady()) return;
@@ -94,7 +91,7 @@ public class RelaySessionUI : MonoBehaviour
         }
     }
 
-    // ── Join ──────────────────────────────────────────────────────────────
+    
     public async void JoinGame()
     {
         if (!await EnsureReady()) return;
@@ -117,7 +114,7 @@ public class RelaySessionUI : MonoBehaviour
         }
     }
 
-    // ── Leave ─────────────────────────────────────────────────────────────
+    
     public void LeaveGame()
     {
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
@@ -126,7 +123,7 @@ public class RelaySessionUI : MonoBehaviour
         SetStatus("Disconnected.");
     }
 
-    // ── Countdown display ─────────────────────────────────────────────────
+    
     public void ShowCountdown(float seconds)
     {
         if (lobbyPanel != null)      lobbyPanel.SetActive(false);
@@ -139,7 +136,7 @@ public class RelaySessionUI : MonoBehaviour
         if (countdownPanel != null)  countdownPanel.SetActive(false);
     }
 
-    // ── Player list refresh ───────────────────────────────────────────────
+    
     private IEnumerator PlayerListRefresh()
     {
         while (true)
@@ -160,7 +157,7 @@ public class RelaySessionUI : MonoBehaviour
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    
     private async Task<bool> EnsureReady()
     {
         if (!_servicesReady) await InitializeServices();

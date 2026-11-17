@@ -1,10 +1,6 @@
-using Unity.Netcode;
+﻿using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// When the local player dies, activates a free-roam spectator camera
-/// that can cycle through alive players.
-/// </summary>
 public class SpectatorController : NetworkBehaviour
 {
     [SerializeField] private float freeCamSpeed = 12f;
@@ -18,7 +14,7 @@ public class SpectatorController : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Create a spectator camera parented to this GO but inactive
+        
         var camGo = new GameObject("SpectatorCamera");
         camGo.transform.SetParent(transform);
         camGo.transform.localPosition = new Vector3(0, 2f, -5f);
@@ -27,18 +23,18 @@ public class SpectatorController : NetworkBehaviour
         camGo.SetActive(false);
     }
 
-    // Called by NetworkHealth.NotifyDeathClientRpc on the owner
+    
     public void EnterSpectate()
     {
         if (!IsOwner || _spectating) return;
         _spectating = true;
 
-        // Disable player camera
+        
         var ctrl = GetComponent<NetworkPlayerController>();
         if (ctrl != null && ctrl.PlayerCamera != null)
             ctrl.PlayerCamera.gameObject.SetActive(false);
 
-        // Enable spectator cam
+        
         if (_specCam != null)
         {
             _specCam.gameObject.SetActive(true);
@@ -59,13 +55,13 @@ public class SpectatorController : NetworkBehaviour
 
     private void HandleFreeCam()
     {
-        // Look
+        
         _yaw   += Input.GetAxis("Mouse X") * mouseSens;
         _pitch -= Input.GetAxis("Mouse Y") * mouseSens;
         _pitch  = Mathf.Clamp(_pitch, -80f, 80f);
         _specCam.transform.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
 
-        // Move
+        
         Vector3 move = new Vector3(
             Input.GetAxisRaw("Horizontal"),
             (Input.GetKey(KeyCode.E) ? 1f : 0f) - (Input.GetKey(KeyCode.Q) ? 1f : 0f),

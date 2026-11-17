@@ -1,16 +1,12 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Tracks ready-state of each connected player. Host can force-start.
-/// Triggers NetworkMatchManager to begin countdown when all players are ready.
-/// </summary>
 public class LobbyManager : NetworkBehaviour
 {
     public static LobbyManager Instance { get; private set; }
 
-    // clientId → ready
+    
     private readonly Dictionary<ulong, bool> _readyMap = new();
 
     public NetworkVariable<int> ReadyCount = new(0,
@@ -42,7 +38,7 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    // ── Client: toggle ready ──────────────────────────────────────────────
+    
     public void ToggleReady()
     {
         if (!IsClient) return;
@@ -62,17 +58,17 @@ public class LobbyManager : NetworkBehaviour
         RefreshCounts();
     }
 
-    // ── Host: force start ─────────────────────────────────────────────────
+    
     public void ForceStart()
     {
         if (!IsHost) return;
-        // Mark all ready
+        
         foreach (var id in NetworkManager.Singleton.ConnectedClientsIds)
             _readyMap[id] = true;
         RefreshCounts();
     }
 
-    // ── Server helpers ────────────────────────────────────────────────────
+    
     private void RefreshCounts()
     {
         int ready = 0, total = 0;

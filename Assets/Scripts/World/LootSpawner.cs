@@ -1,12 +1,8 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Server-side loot spawner. Places NetworkLootPickup objects at designated spawn
-/// points at match start and optionally re-spawns over time.
-/// </summary>
 public class LootSpawner : NetworkBehaviour
 {
     [Header("References")]
@@ -21,13 +17,13 @@ public class LootSpawner : NetworkBehaviour
     [SerializeField] private float respawnChance = 0.3f;
     [SerializeField] private float respawnInterval = 60f;
 
-    // Weight table: (prefab index, weight)
+    
     private static readonly (int index, float weight)[] LootTable =
     {
-        (0, 0.25f),  // medkit
-        (1, 0.40f),  // rifle ammo
-        (2, 0.20f),  // shotgun ammo
-        (3, 0.15f),  // sniper ammo
+        (0, 0.25f),  
+        (1, 0.40f),  
+        (2, 0.20f),  
+        (3, 0.15f),  
     };
 
     private NetworkLootPickup[] _prefabs;
@@ -86,6 +82,6 @@ public class LootSpawner : NetworkBehaviour
             if (r <= acc && _prefabs[index] != null)
                 return _prefabs[index];
         }
-        return _prefabs[1]; // fallback: rifle ammo
+        return _prefabs[1]; 
     }
 }
