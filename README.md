@@ -14,7 +14,9 @@
 
 *10 players · 8 named zones · Full match loop · Mobile + PC controls*
 
-🔗 [github.com/vinayviratwork/BattlegroundX](https://github.com/vinayviratwork/BattlegroundX)
+🌐 **Live Project Page:** [vinayviratwork.github.io/BattlegroundX](https://vinayviratwork.github.io/BattlegroundX)
+
+🔗 **GitHub:** [github.com/vinayviratwork/BattlegroundX](https://github.com/vinayviratwork/BattlegroundX)
 
 </div>
 
