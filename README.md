@@ -1,203 +1,188 @@
 # BATTLEGROUND X
 
-**An original Unity 2022.3 online multiplayer battle-royale — Android & Windows x64**
+**Original Unity 2022.3 online multiplayer battle-royale — Android & Windows x64**
 
-> This is a student-project prototype. All source code and project structure are complete and ready to open in Unity. No commercial 3D assets, animations, or sound clips are included. A two-device Relay test must be completed before claiming end-to-end functionality.
+> 10-player prototype | Phase 2 complete | Source-ready for Unity Editor
+
+🔗 **GitHub:** [github.com/vinayviratwork/BattlegroundX](https://github.com/vinayviratwork/BattlegroundX)
 
 ---
 
-## Features
+## What's Inside
 
-| System | Details |
+| System | Status |
 |---|---|
-| **Multiplayer** | Unity Relay + NGO + Unity Transport — host/join via 6-digit code |
-| **Authentication** | Anonymous sign-in via Unity Authentication |
-| **Player** | Third-person: walk · run · sprint · crouch · jump · aim · camera follow |
-| **Combat** | Assault Rifle · Shotgun · Sniper — ammo · reload · recoil · weapon switch |
-| **Inventory** | Per-player ammo reserves (rifle/shotgun/sniper) + medkits |
-| **Health** | Server-authoritative damage · medkit heal · death events |
-| **Safe Zone** | 7 shrink phases with escalating damage |
-| **Loot** | Weighted spawn table · proximity auto-pickup · periodic respawn |
-| **Match Flow** | Lobby → Countdown → In-Progress → Ended → Return to Lobby |
-| **Elimination** | Placement tracking · kill credits · winner detection |
-| **HUD** | Health bar · ammo counter · zone indicator · kill feed · match-end stats |
-| **Spectator** | Free-cam + cycle through alive players on death |
-| **Mobile** | Virtual joystick · look pad · fire/reload/jump/crouch/aim/medkit buttons |
-| **Map** | 360×360 greybox: buildings · roads · trees · rocks · bridges · cover |
+| Multiplayer (NGO + Relay) | ✅ Host/join via 6-digit code |
+| Authentication | ✅ Anonymous Unity Auth |
+| Player controller | ✅ Walk · Run · Sprint · Crouch · Jump · Aim |
+| Combat | ✅ AR · Shotgun · Sniper — ammo · reload · recoil |
+| Inventory | ✅ Per-player ammo + medkits |
+| Health | ✅ Server-authoritative damage + healing |
+| Safe Zone | ✅ 7 shrink phases, escalating damage |
+| Loot | ✅ Weighted spawn + proximity auto-pickup + respawn |
+| Match Flow | ✅ Lobby → Countdown → Match → End → Lobby |
+| Kill Feed | ✅ Kill credits + placement + winner detection |
+| Spectator | ✅ Free-cam + cycle alive players |
+| Mobile Input | ✅ Virtual joystick + look pad + all action buttons |
+| **Animator System** | ✅ Full state machine — idle/walk/run/sprint/crouch/jump/fire/reload/death |
+| **VFX** | ✅ Muzzle flash · Hit sparks · Blood · Screen flash · Bullet decals |
+| **Minimap** | ✅ Overhead camera + RenderTexture + player icons + zone ring |
+| **Settings Menu** | ✅ Sensitivity · Graphics quality · Volume (Escape key) |
+| **Ping Display** | ✅ Live RTT — green/yellow/red |
+| **Name Tags** | ✅ World-space floating name + HP |
+| **Named Map Zones** | ✅ Military Base · School · Pochinki · Hospital · Port · Ruins · Farm · Shelter |
+| **Audio** | ✅ Procedural WAV clips auto-generated and wired |
+
+---
+
+## Map
+
+8 named zones on a 360×360 map:
+
+```
+           MILITARY BASE
+    PORT      SCHOOL | POCHINKI    SHELTER
+              -------+-------
+    FARM     HOSPITAL | RUINS
+```
+
+Full zone guide: [Docs/MAP_GUIDE.md](Docs/MAP_GUIDE.md)
 
 ---
 
 ## Requirements
 
-- **Unity 2022.3.62f1** (or any 2022.3 LTS patch)
-- **Android Build Support** module (SDK + NDK + OpenJDK) — for APK
-- **Windows Build Support (IL2CPP)** — for Windows EXE
-- **Unity account** + Unity Cloud project with **Authentication** and **Relay** enabled
+- **Unity 2022.3.62f1** (any 2022.3 LTS patch)
+- Android Build Support (SDK + NDK + OpenJDK) — for APK
+- Windows Build Support (IL2CPP) — for EXE
+- Unity account + project with **Authentication** and **Relay** enabled
 
 ---
 
-## First-Time Setup
+## Setup — 6 Steps
 
-### 1. Install Unity
-Download [Unity Hub](https://unity.com/unity-hub) → install **2022.3.62f1** with:
-- Android Build Support (SDK/NDK/JDK)
-- Windows Build Support (IL2CPP)
+### 1. Clone
+```bash
+git clone https://github.com/vinayviratwork/BattlegroundX.git
+```
 
-### 2. Open Project
-Open **this folder** (`BattlegroundX_Project/`) from Unity Hub.  
-Wait for the Package Manager to download all packages (~3–5 min).
+### 2. Open in Unity
+Open `BattlegroundX_Project/` from Unity Hub. Wait for packages to resolve (~5 min).
 
-### 3. Link Unity Cloud
-`Edit → Project Settings → Services → Create a new project ID`
+### 3. Generate Scene
+```
+Tools → Battleground X → Generate Full Scene
+```
+This creates the full map with all 8 named zones, all network objects, minimap, HUD, settings, and runs the Animator Controller generator automatically.
 
-In [Unity Dashboard](https://dashboard.unity.com):
-1. Open your project.
-2. Enable **Authentication** → Activate anonymous sign-in.
-3. Enable **Relay** → note the region.
+### 4. Setup Audio
+```
+Tools → Battleground X → Setup Audio (Procedural)
+```
+Generates and wires 7 procedural WAV clips into AudioManager. Replace with real clips any time by dragging WAV/MP3 files onto the AudioManager Inspector slots.
 
-### 4. Generate the Scene
-`Tools → Battleground X → Generate Full Scene`
-
-This creates:
-- `Assets/Scenes/BattlegroundX_Main.unity`
-- `Assets/Prefabs/NetworkPlayer.prefab`
-- `Assets/Prefabs/Loot_*.prefab` (4 loot prefabs)
-
-### 5. (Optional) Assign Audio Clips
-Select the **AudioManager** GameObject in the scene Hierarchy.  
-Drag WAV/MP3 files onto: Shot, Reload, Hit, Footstep, Zone Warning, Pickup, Death.
+### 5. Link Unity Cloud
+```
+Edit → Project Settings → Services → Create Project ID
+```
+In [Unity Dashboard](https://dashboard.unity.com): enable **Authentication** + **Relay**.
 
 ### 6. Play Test
-1. Press **Play** in Unity Editor.
-2. Click **HOST** — a 6-digit join code appears.
-3. Open a second Editor instance (or standalone build).
-4. Enter the join code → click **JOIN**.
-5. Both instances must be on the same Unity Cloud project/environment.
+Press **Play** → click **HOST** → note the 6-digit join code.
+Open a second Editor instance → enter code → **JOIN**.
 
 ---
 
 ## Controls
 
-### PC (Windows)
-| Action | Key |
+| PC | Action |
 |---|---|
-| Move | WASD |
-| Look | Mouse |
-| Sprint | Left Shift (hold) |
-| Crouch | C or Left Ctrl |
-| Jump | Space |
-| Fire | Left Mouse Button |
-| Aim (ADS) | Right Mouse Button (hold) |
-| Reload | R |
-| Switch weapon | Mouse scroll / Q–E |
-| Interact / Pickup | F (or walk into loot — auto) |
-| Use medkit | (wire to key in Inspector or mobile button) |
-| Spectate cycle | Tab / Right Arrow (after death) |
+| WASD | Move |
+| Mouse | Look |
+| Left Shift | Sprint |
+| C | Crouch |
+| Space | Jump |
+| LMB | Fire |
+| RMB | Aim (ADS) |
+| R | Reload |
+| Scroll / Q-E | Switch weapon |
+| F | Pickup loot |
+| Escape | Settings menu |
 
-### Android
-| Action | Control |
-|---|---|
-| Move | Left virtual joystick |
-| Look | Right swipe pad |
-| Fire | Fire button (auto-fire when held) |
-| Reload | Reload button |
-| Jump | Jump button |
-| Crouch | Crouch button |
-| Aim (ADS) | Aim button (hold) |
-| Use medkit | Medkit button |
-| Switch weapon | Next / Prev weapon buttons |
+**Android:** Virtual joystick (left) + look pad (right) + on-screen buttons.
 
 ---
 
-## Build Instructions
+## Build
 
 ### Android APK
-1. `File → Build Settings → Android`
-2. Click **Switch Platform** (wait for reimport).
-3. Set **Package Name**: `com.yourstudio.battlegroundx`
-4. Set **Minimum API Level**: Android 6.0 (API 23)
-5. Set **Target API Level**: Android 13 (API 33)
-6. Orientation: **Landscape**
-7. Add `Assets/Scenes/BattlegroundX_Main.unity` to **Scenes In Build**.
-8. Click **Build** → save as `BattlegroundX.apk`.
+`File → Build Settings → Android → Switch Platform → Build`
+- Package: `com.yourstudio.battlegroundx`
+- Min SDK: Android 6.0 (API 23)
+- Orientation: Landscape
 
-### Windows x64 EXE
-1. `File → Build Settings → Windows, Mac, Linux`
-2. Set architecture: **x86_64**
-3. Click **Switch Platform**.
-4. Add the scene to **Scenes In Build**.
-5. Click **Build** → choose output folder.
+### Windows EXE
+`File → Build Settings → Windows x86_64 → Switch Platform → Build`
 
 ---
 
-## Online Test (Two Devices / Instances)
-
-1. Build/run on **Device A** → click **HOST** → note the join code shown on screen.
-2. Run on **Device B** → enter the join code → click **JOIN**.
-3. Both devices need internet and must use the **same Unity Cloud project**.
-4. The host acts as the network server in this prototype (Relay peer-hosted).
-
----
-
-## Project Layout
+## Project Structure
 
 ```
 Assets/
-  Editor/                     ← One-click scene generator
+  Audio/                    ← Generated WAV clips
+  Animations/               ← NetworkPlayer.controller (auto-generated)
+  Editor/                   ← Scene generator + Animator generator + Audio setup
+  Prefabs/                  ← NetworkPlayer + 4 loot prefabs
+  Scenes/                   ← BattlegroundX_Main.unity
   Scripts/
-    Audio/                    ← AudioManager
-    Combat/                   ← NetworkHealth, NetworkWeapon
-    Data/                     ← GameSettings ScriptableObject
-    Networking/               ← RelaySessionUI, LobbyManager
-    Player/                   ← NetworkPlayerController, PlayerInventory,
-                                 PlayerStats, SpectatorController, CameraShake
-    UI/                       ← NetworkHUD, MobileInputManager, FireButton
-    World/                    ← NetworkMatchManager, NetworkSafeZone,
-                                 SpawnManager, LootSpawner, NetworkLootPickup
-Packages/
-  manifest.json
-ProjectSettings/
-  (all .asset files)
+    Audio/                  ← AudioManager
+    Combat/                 ← NetworkHealth, NetworkWeapon
+    Data/                   ← GameSettings ScriptableObject
+    Editor/                 ← AnimatorControllerGenerator, AudioSetup
+    Networking/             ← RelaySessionUI, LobbyManager
+    Player/                 ← NetworkPlayerController, PlayerAnimatorController,
+                               PlayerInventory, PlayerStats, SpectatorController, CameraShake
+    UI/                     ← NetworkHUD, MinimapController, MinimapIcon,
+                               MinimapSafeZoneRing, SettingsMenu, PingDisplay, NameTag,
+                               MobileInputManager, FireButton, MobileJoystickBridge
+    VFX/                    ← VFXManager, MuzzleFlash, HitEffect, BloodEffect
+    World/                  ← NetworkMatchManager, NetworkSafeZone, SpawnManager,
+                               LootSpawner, NetworkLootPickup
 Docs/
-  DEVELOPMENT_AUDIT.md
-  DEVELOPMENT_ROADMAP.md
-  PROJECT_STATUS.md
+  MAP_GUIDE.md              ← Zone guide + strategy + loot table
+  PROJECT_STATUS.md         ← Full completion status
+  DEVELOPMENT_ROADMAP.md    ← Phase 1 ✅ Phase 2 ✅ Phase 3 → Phase 4 →
   TEST_PLAN.md
   QA_TEST_REPORT_TEMPLATE.md
   RELEASE_CHECKLIST.md
-  BUG_REPORT_TEMPLATE.md
-  RELAY_AND_SECURITY.md
-  UNITY_SETUP_AFTER_INSTALL.md
 ```
 
 ---
 
-## Important Limitations
+## What Still Needs Manual Work
 
-- Greybox map only — no commercial character models, textures, or animations.
-- AudioManager slots are empty — assign your own WAV/MP3 clips.
-- Owner-authoritative movement (prototype) — not production anti-cheat.
-- Relay peer-hosted — no dedicated server fleet.
-- 10-player target; architecture allows expansion.
-- Never push Unity credentials, Cloud keys, or signing keystores to GitHub.
+| Task | Why |
+|---|---|
+| Assign animation motion clips | No .fbx animations included — assign in Animator window |
+| Replace procedural audio (optional) | Drop real WAV/MP3 onto AudioManager Inspector slots |
+| Link Unity Cloud project | Requires your own Unity account |
+| Run two-device Relay test | Requires running builds |
+| Build APK / EXE | Requires Unity Editor |
 
 ---
 
-## GitHub Push
+## Limitations
 
-```bash
-git init
-git add .
-git commit -m "feat: Battleground X v0.1.0 prototype"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/BattlegroundX.git
-git push -u origin main
-```
-
-Replace the remote URL with your own repository.
+- Greybox map only — no commercial character models or textures
+- Owner-authoritative movement (prototype) — not production anti-cheat
+- Relay peer-hosted — no dedicated server fleet
+- 10-player target — architecture extensible to more
+- Never push Unity credentials or signing keystores to this repo
 
 ---
 
 ## License
 
-See [LICENSE](LICENSE). Original code only — no BGMI assets, models, or IP.
+Original source code only. See [LICENSE](LICENSE).
+No BGMI, Krafton, or Rockstar Games assets, models, audio, or IP are included.

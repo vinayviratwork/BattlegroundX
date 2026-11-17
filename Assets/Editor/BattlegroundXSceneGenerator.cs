@@ -38,10 +38,11 @@ public static class BattlegroundXSceneGenerator
 
         
         BuildRoads();
-        BuildBuildings();
+        BuildNamedZones();
         BuildTrees();
         BuildCoverObjects();
         BuildBridges();
+        BuildZoneLabels();
 
         
         var nm = BuildNetworkManager(playerPrefab);
@@ -154,36 +155,241 @@ public static class BattlegroundXSceneGenerator
     
     private static void BuildBuildings()
     {
-        var parent = new GameObject("Buildings").transform;
+    }
 
-        
-        Vector3[] zones = {
-            new( 60,0, 60), new(-60,0, 60), new( 60,0,-60), new(-60,0,-60),
-            new(  0,0,100), new(  0,0,-100), new(100,0,0),  new(-100,0,0)
-        };
+    private static void BuildNamedZones()
+    {
+        var parent = new GameObject("NamedZones").transform;
+        BuildMilitaryBase(parent, new Vector3(  0, 0,  80));
+        BuildSchool      (parent, new Vector3(-80, 0,   0));
+        BuildPochinki    (parent, new Vector3( 80, 0,   0));
+        BuildHospital    (parent, new Vector3(  0, 0, -80));
+        BuildPort        (parent, new Vector3(-80, 0,  80));
+        BuildRuins       (parent, new Vector3( 80, 0, -80));
+        BuildFarm        (parent, new Vector3(-80, 0, -80));
+        BuildShelter     (parent, new Vector3( 80, 0,  80));
+    }
 
-        int idx = 0;
-        foreach (var z in zones)
+    private static void BuildMilitaryBase(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_MilitaryBase");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        CreateBuilding(root.transform, "Barracks_A",    new Vector3(-15,0, 10), new Vector3(20,6,8));
+        CreateBuilding(root.transform, "Barracks_B",    new Vector3( 15,0, 10), new Vector3(20,6,8));
+        CreateBuilding(root.transform, "CommandCenter", new Vector3(  0,0,-10), new Vector3(16,10,14));
+        CreateBuilding(root.transform, "Armory",        new Vector3(-18,0,-10), new Vector3(8,5,8));
+        CreateBuilding(root.transform, "Watchtower_A",  new Vector3(-22,0, 22), new Vector3(4,14,4));
+        CreateBuilding(root.transform, "Watchtower_B",  new Vector3( 22,0, 22), new Vector3(4,14,4));
+        CreatePerimeter(root.transform, 28f, new Color(0.4f, 0.35f, 0.25f));
+        var runway = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        runway.name = "Runway";
+        runway.transform.SetParent(root.transform);
+        runway.transform.localPosition = new Vector3(0, 0.05f, 30);
+        runway.transform.localScale    = new Vector3(8, 0.1f, 40);
+        SetColor(runway, new Color(0.25f,0.25f,0.25f));
+        Object.DestroyImmediate(runway.GetComponent<BoxCollider>());
+    }
+
+    private static void BuildSchool(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_School");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        CreateBuilding(root.transform, "MainBuilding", new Vector3( 0,0, 5), new Vector3(24,10,16));
+        CreateBuilding(root.transform, "Gymnasium",    new Vector3( 0,0,-14),new Vector3(18,7,12));
+        CreateBuilding(root.transform, "Library",      new Vector3(-16,0,5), new Vector3(8,8,8));
+        CreateBuilding(root.transform, "Canteen",      new Vector3( 16,0,5), new Vector3(8,5,8));
+        CreateFence(root.transform, 22f, new Color(0.6f,0.6f,0.6f));
+    }
+
+    private static void BuildPochinki(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_Pochinki");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        Vector3[] hpos  = { new(-10,0,10),new(10,0,10),new(-10,0,-10),new(10,0,-10),new(-10,0,0),new(10,0,0),new(0,0,14),new(0,0,-14) };
+        Vector3[] hsz   = { new(8,5,8),new(8,6,8),new(7,5,7),new(9,5,8),new(6,5,6),new(7,6,7),new(8,4,8),new(7,5,7) };
+        for (int i = 0; i < hpos.Length; i++)
+            CreateBuilding(root.transform, "House_" + i, hpos[i], hsz[i]);
+        var church = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        church.name = "Church";
+        church.transform.SetParent(root.transform);
+        church.transform.localPosition = Vector3.zero;
+        church.transform.localScale    = new Vector3(10,14,10);
+        SetColor(church, new Color(0.9f,0.88f,0.82f));
+        var steeple = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        steeple.name = "Steeple";
+        steeple.transform.SetParent(root.transform);
+        steeple.transform.localPosition = new Vector3(0,11,0);
+        steeple.transform.localScale    = new Vector3(1.5f,5f,1.5f);
+        SetColor(steeple, new Color(0.5f,0.4f,0.3f));
+    }
+
+    private static void BuildHospital(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_Hospital");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        CreateBuilding(root.transform, "MainWing",  new Vector3( 0,0, 0),  new Vector3(20,12,16));
+        CreateBuilding(root.transform, "EastWing",  new Vector3(16,0, 0),  new Vector3(10,10,16));
+        CreateBuilding(root.transform, "WestWing",  new Vector3(-16,0,0),  new Vector3(10,10,16));
+        CreateBuilding(root.transform, "Emergency", new Vector3( 0,0,-14), new Vector3(14,6,8));
+        CreateBuilding(root.transform, "Helipad",   new Vector3( 0,0, 16), new Vector3(12,0.5f,12));
+        var c1 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c1.name = "RedCross_H"; c1.transform.SetParent(root.transform);
+        c1.transform.localPosition = new Vector3(0,13,0);
+        c1.transform.localScale    = new Vector3(6f,1f,1.5f);
+        SetColor(c1, Color.red);
+        var c2 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        c2.name = "RedCross_V"; c2.transform.SetParent(root.transform);
+        c2.transform.localPosition = new Vector3(0,13,0);
+        c2.transform.localScale    = new Vector3(1.5f,1f,6f);
+        SetColor(c2, Color.red);
+    }
+
+    private static void BuildPort(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_Port");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        CreateBuilding(root.transform, "Warehouse_A", new Vector3(-12,0, 5), new Vector3(18,8,12));
+        CreateBuilding(root.transform, "Warehouse_B", new Vector3( 12,0, 5), new Vector3(18,8,12));
+        CreateBuilding(root.transform, "Office",      new Vector3(  0,0,-8), new Vector3(10,7,8));
+        var colors = new Color[]{ Color.red,Color.blue,new Color(1f,.6f,0f),Color.green,Color.yellow,new Color(.5f,0,.5f) };
+        for (int i = 0; i < 6; i++)
         {
-            
-            CreateBuilding(parent, $"Building_{idx}_Main", z + new Vector3(0,0,0), new Vector3(12,8,10));
-            
-            CreateBuilding(parent, $"Building_{idx}_A",    z + new Vector3(16,0,5), new Vector3(7,5,7));
-            
-            CreateBuilding(parent, $"Building_{idx}_B",    z + new Vector3(-14,0,-4), new Vector3(5,3,5));
-            idx++;
+            var c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.name = "Container_" + i;
+            c.transform.SetParent(root.transform);
+            c.transform.localPosition = new Vector3(-14+i*5,1.5f,-16);
+            c.transform.localScale    = new Vector3(4,3,8);
+            SetColor(c, colors[i]);
         }
+        var crane = new GameObject("Crane");
+        crane.transform.SetParent(root.transform);
+        crane.transform.localPosition = new Vector3(20,0,0);
+        var cb = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        cb.transform.SetParent(crane.transform);
+        cb.transform.localPosition = new Vector3(0,10,0);
+        cb.transform.localScale    = new Vector3(1f,10f,1f);
+        SetColor(cb, new Color(0.8f,0.7f,0f));
+        var ca = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        ca.transform.SetParent(crane.transform);
+        ca.transform.localPosition = new Vector3(5,20,0);
+        ca.transform.localScale    = new Vector3(12,0.5f,0.5f);
+        SetColor(ca, new Color(0.8f,0.7f,0f));
+    }
 
-        
-        for (int i = 0; i < 4; i++)
+    private static void BuildRuins(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_Ruins");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        var rng = new System.Random(55);
+        for (int i = 0; i < 8; i++)
         {
-            float ang = i * 90f * Mathf.Deg2Rad;
-            var pos = new Vector3(Mathf.Sin(ang) * 120, 0, Mathf.Cos(ang) * 120);
-            CreateTower(parent, "Tower_" + i, pos);
+            float x = (float)(rng.NextDouble()*30-15);
+            float z = (float)(rng.NextDouble()*30-15);
+            float h = 1f + (float)rng.NextDouble()*4f;
+            var w = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            w.name = "RuinWall_"+i;
+            w.transform.SetParent(root.transform);
+            w.transform.localPosition = new Vector3(x,h*0.5f,z);
+            w.transform.localScale    = new Vector3(6f,h,0.5f);
+            w.transform.eulerAngles   = new Vector3(0,(float)(rng.NextDouble()*360),0);
+            SetColor(w, new Color(0.5f+(float)rng.NextDouble()*0.2f,0.45f,0.4f));
         }
     }
 
-    private static void CreateBuilding(Transform parent, string name, Vector3 pos, Vector3 size)
+    private static void BuildFarm(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_Farm");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        CreateBuilding(root.transform, "Farmhouse", new Vector3(0, 0, 10), new Vector3(14,6,10));
+        CreateBuilding(root.transform, "Barn",      new Vector3(0, 0, -8), new Vector3(18,9,12));
+        CreateBuilding(root.transform, "Silo_A",    new Vector3(-14,0,0),  new Vector3(4,12,4));
+        CreateBuilding(root.transform, "Silo_B",    new Vector3(-18,0,0),  new Vector3(4,10,4));
+        for (int row = 0; row < 4; row++)
+        for (int col = 0; col < 6; col++)
+        {
+            var crop = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            crop.name = $"Crop_{row}_{col}";
+            crop.transform.SetParent(root.transform);
+            crop.transform.localPosition = new Vector3(col*2f-5f,0.5f,row*2f-18f);
+            crop.transform.localScale    = new Vector3(0.3f,0.5f,0.3f);
+            SetColor(crop, new Color(0.3f,0.7f,0.1f));
+        }
+    }
+
+    private static void BuildShelter(Transform parent, Vector3 center)
+    {
+        var root = new GameObject("Zone_Shelter");
+        root.transform.SetParent(parent);
+        root.transform.position = center;
+        CreateBuilding(root.transform, "Bunker",     new Vector3( 0,0, 5), new Vector3(16,4,12));
+        CreateBuilding(root.transform, "Hut_A",      new Vector3(-12,0,-5),new Vector3(7,4,7));
+        CreateBuilding(root.transform, "Hut_B",      new Vector3( 12,0,-5),new Vector3(7,4,7));
+        CreateBuilding(root.transform, "Watchtower", new Vector3( 0,0,-16),new Vector3(4,12,4));
+    }
+
+    private static void CreatePerimeter(Transform parent, float halfSize, Color wallColor)
+    {
+        float s = halfSize;
+        CreateWall(parent,"Perim_N",new Vector3(0,1.5f,s),  new Vector3(s*2,3,0.4f));
+        CreateWall(parent,"Perim_S",new Vector3(0,1.5f,-s), new Vector3(s*2,3,0.4f));
+        CreateWall(parent,"Perim_E",new Vector3(s,1.5f,0),  new Vector3(0.4f,3,s*2));
+        CreateWall(parent,"Perim_W",new Vector3(-s,1.5f,0), new Vector3(0.4f,3,s*2));
+    }
+
+    private static void CreateFence(Transform parent, float halfSize, Color col)
+    {
+        float s = halfSize;
+        string[] names  = {"Fence_N","Fence_S","Fence_E","Fence_W"};
+        Vector3[] pos   = { new(0,.75f,s),new(0,.75f,-s),new(s,.75f,0),new(-s,.75f,0) };
+        Vector3[] scales= { new(s*2,1.5f,0.15f),new(s*2,1.5f,0.15f),new(0.15f,1.5f,s*2),new(0.15f,1.5f,s*2) };
+        for (int i = 0; i < 4; i++)
+        {
+            var f = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            f.name = names[i]; f.transform.SetParent(parent);
+            f.transform.localPosition = pos[i];
+            f.transform.localScale    = scales[i];
+            SetColor(f, col);
+            Object.DestroyImmediate(f.GetComponent<BoxCollider>());
+        }
+    }
+
+    private static void BuildZoneLabels()
+    {
+        var parent = new GameObject("ZoneLabels").transform;
+        var zones = new (string name, Vector3 pos)[]
+        {
+            ("MILITARY BASE", new Vector3(  0,8, 80)),
+            ("SCHOOL",        new Vector3(-80,8,  0)),
+            ("POCHINKI",      new Vector3( 80,8,  0)),
+            ("HOSPITAL",      new Vector3(  0,8,-80)),
+            ("PORT",          new Vector3(-80,8, 80)),
+            ("RUINS",         new Vector3( 80,8,-80)),
+            ("FARM",          new Vector3(-80,8,-80)),
+            ("SHELTER",       new Vector3( 80,8, 80)),
+        };
+        foreach (var (name, pos) in zones)
+        {
+            var go = new GameObject("Label_" + name.Replace(" ","_"));
+            go.transform.SetParent(parent);
+            go.transform.position     = pos;
+            go.transform.eulerAngles  = new Vector3(90,0,0);
+            var tmp = go.AddComponent<TextMeshPro>();
+            tmp.text         = name;
+            tmp.fontSize     = 6f;
+            tmp.fontStyle    = FontStyles.Bold;
+            tmp.alignment    = TextAlignmentOptions.Center;
+            tmp.color        = new Color(1f,0.9f,0.2f);
+            tmp.outlineWidth = 0.3f;
+            tmp.outlineColor = Color.black;
+        }
+    }
     {
         var root = new GameObject(name);
         root.transform.SetParent(parent);
@@ -211,26 +417,7 @@ public static class BattlegroundXSceneGenerator
         w.layer = LayerMask.NameToLayer("Building") >= 0 ? LayerMask.NameToLayer("Building") : 0;
     }
 
-    private static void CreateTower(Transform parent, string name, Vector3 pos)
-    {
-        var root = new GameObject(name);
-        root.transform.SetParent(parent);
-        root.transform.position = pos;
-        
-        var base_ = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        base_.name = "Pillar";
-        base_.transform.SetParent(root.transform);
-        base_.transform.localPosition = new Vector3(0, 7, 0);
-        base_.transform.localScale    = new Vector3(1.5f, 7f, 1.5f);
-        SetColor(base_, new Color(0.5f, 0.4f, 0.3f));
-        
-        var plat = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        plat.name = "Platform";
-        plat.transform.SetParent(root.transform);
-        plat.transform.localPosition = new Vector3(0, 15.5f, 0);
-        plat.transform.localScale    = new Vector3(5, 0.4f, 5);
-        SetColor(plat, new Color(0.5f, 0.4f, 0.3f));
-    }
+
 
     
     
