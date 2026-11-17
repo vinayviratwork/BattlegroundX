@@ -1,33 +1,52 @@
 name: Battleground X — Unity CI
 
-# Triggers: push to main/develop, or any pull request
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
 
-# ── Environment ────────────────────────────────────────────────────────────────
 env:
   UNITY_VERSION: 2022.3.62f1
-  PROJECT_PATH: .          # workflow runs from BattlegroundX_Project/
+  PROJECT_PATH: .
 
-# ── Jobs ──────────────────────────────────────────────────────────────────────
 jobs:
 
-  # ── 1. Activate & Validate ──────────────────────────────────────────────────
-  validate:
-    name: Activate & Validate Project
+  check-secrets:
+    name: Check Unity Secrets
     runs-on: ubuntu-latest
+    outputs:
+      secrets_set: ${{ steps.check.outputs.secrets_set }}
+    steps:
+      - name: Check if Unity secrets exist
+        id: check
+        run: |
+          if [ -n "${{ secrets.UNITY_EMAIL }}" ] && [ -n "${{ secrets.UNITY_PASSWORD }}" ] && [ -n "${{ secrets.UNITY_LICENSE }}" ]; then
+            echo "secrets_set=true" >> $GITHUB_OUTPUT
+            echo "Unity secrets found — builds will run."
+          else
+            echo "secrets_set=false" >> $GITHUB_OUTPUT
+            echo "Unity secrets not configured. Skipping Unity builds."
+            echo ""
+            echo "To enable CI builds, add these 3 secrets in:"
+            echo "GitHub repo → Settings → Secrets and variables → Actions"
+            echo "  UNITY_EMAIL     — your Unity account email"
+            echo "  UNITY_PASSWORD  — your Unity account password"
+            echo "  UNITY_LICENSE   — your Unity license XML (from game.ci/activation)"
+          fi
+
+  validate:
+    name: Activate and Validate Project
+    runs-on: ubuntu-latest
+    needs: check-secrets
+    if: needs.check-secrets.outputs.secrets_set == 'true'
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           lfs: false
 
-      - name: Cache Unity Library
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: Library
           key: Library-${{ env.UNITY_VERSION }}-${{ hashFiles('Packages/manifest.json') }}
@@ -35,24 +54,23 @@ jobs:
             Library-${{ env.UNITY_VERSION }}-
             Library-
 
-      # GameCI: https://game.ci
-      - name: Activate Unity & run validation
+      - name: Activate Unity and validate project
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE:      ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL:        ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD:     ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE:   ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:     ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD:  ${{ secrets.UNITY_PASSWORD }}
         with:
-          unityVersion:       ${{ env.UNITY_VERSION }}
-          projectPath:        ${{ env.PROJECT_PATH }}
-          buildMethod:        ""       # validation only — no build method
-          allowDirtyBuild:    true
+          unityVersion:    ${{ env.UNITY_VERSION }}
+          projectPath:     ${{ env.PROJECT_PATH }}
+          buildMethod:     ""
+          allowDirtyBuild: true
 
-  # ── 2. Build Android ────────────────────────────────────────────────────────
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
     needs: validate
+    if: needs.validate.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -65,18 +83,18 @@ jobs:
           key: Library-Android-${{ env.UNITY_VERSION }}-${{ hashFiles('Packages/manifest.json') }}
           restore-keys: Library-Android-${{ env.UNITY_VERSION }}-
 
-      - name: Build Android
+      - name: Build Android APK
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE:      ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL:        ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD:     ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE:   ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:     ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD:  ${{ secrets.UNITY_PASSWORD }}
         with:
-          unityVersion:       ${{ env.UNITY_VERSION }}
-          projectPath:        ${{ env.PROJECT_PATH }}
-          targetPlatform:     Android
-          androidExportType:  androidPackage   # produces .apk
-          versioning:         Semantic
+          unityVersion:      ${{ env.UNITY_VERSION }}
+          projectPath:       ${{ env.PROJECT_PATH }}
+          targetPlatform:    Android
+          androidExportType: androidPackage
+          versioning:        Semantic
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -85,11 +103,11 @@ jobs:
           path: build/Android/*.apk
           retention-days: 14
 
-  # ── 3. Build Windows ────────────────────────────────────────────────────────
   build-windows:
     name: Build Windows x64
     runs-on: windows-2022
     needs: validate
+    if: needs.validate.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -105,14 +123,14 @@ jobs:
       - name: Build Windows x64
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE:      ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL:        ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD:     ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE:   ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:     ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD:  ${{ secrets.UNITY_PASSWORD }}
         with:
-          unityVersion:       ${{ env.UNITY_VERSION }}
-          projectPath:        ${{ env.PROJECT_PATH }}
-          targetPlatform:     StandaloneWindows64
-          versioning:         Semantic
+          unityVersion:   ${{ env.UNITY_VERSION }}
+          projectPath:    ${{ env.PROJECT_PATH }}
+          targetPlatform: StandaloneWindows64
+          versioning:     Semantic
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
@@ -120,3 +138,34 @@ jobs:
           name: BattlegroundX-Windows64
           path: build/StandaloneWindows64/
           retention-days: 14
+
+  notify-no-secrets:
+    name: Setup Required
+    runs-on: ubuntu-latest
+    needs: check-secrets
+    if: needs.check-secrets.outputs.secrets_set == 'false'
+    steps:
+      - name: Print setup instructions
+        run: |
+          echo "========================================"
+          echo "  UNITY CI — SETUP REQUIRED"
+          echo "========================================"
+          echo ""
+          echo "Unity builds are skipped because secrets are not configured."
+          echo ""
+          echo "To enable automated builds:"
+          echo ""
+          echo "Step 1: Get your Unity License XML"
+          echo "  Visit: https://game.ci/docs/github/activation"
+          echo "  Follow the manual activation steps to get UNITY_LICENSE"
+          echo ""
+          echo "Step 2: Add secrets to your GitHub repo"
+          echo "  Go to: https://github.com/vinayviratwork/BattlegroundX/settings/secrets/actions"
+          echo "  Add these 3 secrets:"
+          echo "    UNITY_EMAIL      your Unity account email"
+          echo "    UNITY_PASSWORD   your Unity account password"
+          echo "    UNITY_LICENSE    the XML content from Step 1"
+          echo ""
+          echo "Step 3: Push any change — CI will run automatically"
+          echo "========================================"
+          exit 0
